@@ -1,0 +1,19 @@
+{
+    "ubm_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ubms/full_ubm_2048/final.ubm",
+    "ivec_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ivector_400/ivector_extractors/iter.20.npz",
+    "plda_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/PLDA/plda.npz",
+    "vec_processor_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/vec_norm/vec_processor",
+    "device": "cuda:0",
+
+    "mfcc_config": {
+        "sampling_rate": 16000,
+        "frame_length": 25,
+        "frame_shift": 10,
+        "low_freq": 20,
+        "high_freq": 7600,
+        "num_mel_bins": 30,
+        "num_ceps": 24,
+        "cmn": true,
+        "delta": true
+    }
+}

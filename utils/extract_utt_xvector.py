@@ -5,41 +5,39 @@ from pyannote.core import Annotation, Segment
 
 from sklearn.cluster import AgglomerativeClustering, SpectralClustering
 from sklearn.neighbors import NearestCentroid
+from torchmetrics.functional import pairwise_cosine_similarity
 
 import soundfile as sf
 
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from asvtorch.src.ivector.ivector_extractor import IVectorExtractor
-from asvtorch.src.ivector.gmm import DiagGmm, Gmm
-from asvtorch.src.backend.vector_processing import VectorProcessor
-from asvtorch.src.backend.plda import Plda
+from asvtorch.src.networks.network_io import initialize_net
 
 sys.path.append(os.path.dirname(__file__))
 from kaldi_data import KaldiData
 from feature import extract_mfcc, exclude_overlaping
-from ivector_feat import extract_ivector_from_mfcc
 
-def load_models(config):
-    
-    device = torch.device(config["device"])
-    
-    ubm = Gmm.from_kaldi(config["ubm_path"], device)
-    diag_ubm = DiagGmm.from_full_gmm(ubm, device)
-    
-    ivec_extractor = IVectorExtractor.from_npz_file(config["ivec_path"], device)
-    
-    vec_processor = VectorProcessor.load(config["vec_processor_path"], device)
-    
-    plda = Plda.load(config["plda_path"], device)
-    
-    return ubm, diag_ubm, ivec_extractor, vec_processor, plda
+def load_model(model_filepath, device):
+    loaded_states = torch.load(model_filepath, map_location=device)
+    state_dict = loaded_states['model_state_dict']
+    key1 = 'feat_dim_param'
+    key2 = 'n_speakers_param'
+    feat_dim = state_dict[key1].item()
+    n_speakers = state_dict[key2].item()
+    net = initialize_net(feat_dim, n_speakers)
+    net.to(device)
+    net.load_state_dict(state_dict)
+    net.eval()
+
+    return net
 
 def extract_utt_ivector_by_rttm(config):
     mfcc_config = config['mfcc_config']
     device = torch.device(config["device"])
     min_seg_length = 1.0
-    ubm, diag_ubm, ivec_extractor, vec_processor, plda = load_models(config)
+
+    model_filepath = config['model_filepath']
+    model = load_model(model_filepath, device)
     
     kaldi_obj = KaldiData(config["path_dataset"])
     
@@ -67,7 +65,8 @@ def extract_utt_ivector_by_rttm(config):
         
         start = 0
         end = mfcc_feat.shape[0]
-        ivector_emb = []
+        mfcc_feat = mfcc_feat.permute(1, 0)
+        xvector_emb = []
         frame_shift = 0.01 * sr
         for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
             st, et = segment.start, segment.end
@@ -85,20 +84,17 @@ def extract_utt_ivector_by_rttm(config):
                 rel_end = end_frame - start
             if rel_start is not None or rel_end is not None:
                 with torch.no_grad():
-                    sub_len = len(mfcc_feat[rel_start:rel_end, :])
-                    ivector_chunk = extract_ivector_from_mfcc(mfcc_feat[rel_start:rel_end, :], ivec_extractor, ubm, diag_ubm, sub_sampling=sub_len)
-                    ivector_emb.append(ivector_chunk)
-        ivector_emb = torch.cat(ivector_emb, dim=0)
-        ivector_emb_norm = vec_processor.process(ivector_emb)
+                    xvector_emb.append(model(mfcc_feat[None, :, rel_start:rel_end], 'extract_embeddings'))
+        xvector_emb = torch.cat(xvector_emb, dim=0)
         
-        score_matrix = plda.score_all_vs_all(ivector_emb_norm, ivector_emb_norm, 200)
+        score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
+        score_matrix = score_matrix.detach().cpu().numpy()
         score_matrix = score_matrix - np.min(score_matrix)
         score_matrix = score_matrix / np.max(score_matrix)
         
         clustering_label = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
         clf = NearestCentroid()
-        ivector_emb_norm = ivector_emb_norm.detach().cpu().numpy()
-        clf.fit(ivector_emb_norm, clustering_label)
+        clf.fit(xvector_emb, clustering_label)
         
         print(clf.centroids_.shape)
         

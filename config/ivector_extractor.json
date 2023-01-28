@@ -3,7 +3,12 @@
     "ivec_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ivector_400/ivector_extractors/iter.20.npz",
     "plda_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/PLDA/plda.npz",
     "vec_processor_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/vec_norm/vec_processor",
-    "device": "cuda:0",
+    "device": "cuda:1",
+
+    "mfcc_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/mfcc",
+    "ivec_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/ivec",
+    "label_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/label",
+    "path_dataset": "/exhome1/weiguang/data/M2MET/Train_Ali_far",
 
     "mfcc_config": {
         "sampling_rate": 16000,

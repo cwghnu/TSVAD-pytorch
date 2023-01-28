@@ -1,5 +1,8 @@
 import numpy as np
 import torch
+from itertools import permutations
+import copy
+
 from torchaudio.compliance.kaldi import mfcc as kaldi_mfcc
 from kaldi.matrix import SubVector, SubMatrix
 from kaldi.feat.functions import compute_deltas, DeltaFeaturesOptions, SlidingWindowCmnOptions, sliding_window_cmn
@@ -36,3 +39,36 @@ def exclude_overlaping(annotation: 'Annotation') -> Annotation:
     
     annotation_no_overlap = annotation.extrude(annotation.get_overlap())
     return annotation_no_overlap
+
+def index_aligned_labels(hyp, ref, n_classes=4):
+    hyp = np.array(hyp)
+    ref = np.array(ref)
+    
+    # hyp_index = []
+    # for i in range(n_classes):
+    #     tmp = hyp[ref == i]
+    #     c = np.bincount(tmp)
+    #     most_index = np.argmax(c)
+    #     hyp_index.append(most_index)
+    # print(hyp_index)
+
+    err_min = 1.0
+    final_permute = None
+    for permute_array in permutations(np.arange(n_classes), n_classes):
+        hyp_tmp = copy.deepcopy(hyp)
+
+        # replace numbers
+        for idx_class in range(n_classes):
+            hyp_tmp[hyp_tmp == permute_array[idx_class]] = idx_class
+
+        diff_array = ref - hyp_tmp
+        diff_array[diff_array != 0] = 1
+
+        err_tmp = np.mean(diff_array)
+        if err_tmp < err_min:
+            err_min = err_tmp
+            final_permute = permute_array
+
+    # print(final_permute)
+        
+    return final_permute

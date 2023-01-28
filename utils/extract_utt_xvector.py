@@ -15,7 +15,7 @@ from asvtorch.src.networks.network_io import initialize_net
 
 sys.path.append(os.path.dirname(__file__))
 from kaldi_data import KaldiData
-from feature import extract_mfcc, exclude_overlaping
+from feature import extract_mfcc, exclude_overlaping, index_aligned_labels
 
 def load_model(model_filepath, device):
     loaded_states = torch.load(model_filepath, map_location=device)
@@ -61,12 +61,19 @@ def extract_utt_ivector_by_rttm(config):
         ref_label_no_overlap = exclude_overlaping(ref_label)
         
         mfcc_feat = extract_mfcc(signal_data, mfcc_config['sampling_rate'], num_ceps=mfcc_config['num_ceps'], low_freq=mfcc_config['low_freq'], high_freq=mfcc_config['high_freq'], cmn=mfcc_config['cmn'], delta=mfcc_config['delta'])
+        
+        label_array = np.zeros((len(mfcc_feat), n_speaker), dtype=np.int32)
+
+        output_file = os.path.join(config["mfcc_output_directory"], rec_id)
+        np.save(output_file, mfcc_feat)
+        
         mfcc_feat = mfcc_feat.to(device)
         
         start = 0
         end = mfcc_feat.shape[0]
         mfcc_feat = mfcc_feat.permute(1, 0)
         xvector_emb = []
+        label_ref = []
         frame_shift = 0.01 * sr
         for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
             st, et = segment.start, segment.end
@@ -85,6 +92,8 @@ def extract_utt_ivector_by_rttm(config):
             if rel_start is not None or rel_end is not None:
                 with torch.no_grad():
                     xvector_emb.append(model(mfcc_feat[None, :, rel_start:rel_end], 'extract_embeddings'))
+                    label_array[rel_start:rel_end, speaker_index] = 1
+                    label_ref.append(speaker_index)
         xvector_emb = torch.cat(xvector_emb, dim=0)
         
         score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
@@ -94,12 +103,19 @@ def extract_utt_ivector_by_rttm(config):
         
         clustering_label = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
         clf = NearestCentroid()
+        xvector_emb = xvector_emb.detach().cpu().numpy()
         clf.fit(xvector_emb, clustering_label)
         
         print(clf.centroids_.shape)
+        print(clf.classes_)
+        
+        index_aligned = index_aligned_labels(clustering_label, label_ref, n_classes=n_speaker)
+        assert len(np.unique(index_aligned)) == n_speaker
+        print(index_aligned)
+        centroids = clf.centroids_[index_aligned]
         
         output_file = os.path.join(config["output_directory"], rec_id)
-        np.save(output_file, clf.centroids_)
+        np.save(output_file, centroids)
         
 
 if __name__ == "__main__":
@@ -107,23 +123,11 @@ if __name__ == "__main__":
     import json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='/exhome1/weiguang/code/TSVAD-pytorch/config/ivector_extractor.json', help='JSON file for configuration')
-    parser.add_argument('-p', '--path_dataset', type=str, default='/exhome1/weiguang/data/M2MET/Test_Ali_far', help='Directory for datasets')
-    parser.add_argument('-o', '--output_directory', type=str, default='/exhome1/weiguang/data/M2MET/Test_Ali_far/ivec', help='Directory for output ivectors')
+    parser.add_argument('-c', '--config', type=str, default='/exhome1/weiguang/code/TSVAD-pytorch/config/xvector_extractor.json', help='JSON file for configuration')
     args = parser.parse_args()
     
     with open(args.config) as f:
         data = f.read()
     config = json.loads(data)
-    
-    if args.path_dataset is None:
-        print("Please enter the dataset path!")
-        sys.exit()
-    if args.output_directory is None:
-        print("Plase enter the directory to store ivectors!")
-        sys.exit()
-    
-    config["path_dataset"] = args.path_dataset
-    config["output_directory"] = args.output_directory
     
     extract_utt_ivector_by_rttm(config)

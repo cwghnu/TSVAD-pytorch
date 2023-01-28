@@ -17,7 +17,7 @@ from asvtorch.src.backend.plda import Plda
 
 sys.path.append(os.path.dirname(__file__))
 from kaldi_data import KaldiData
-from feature import extract_mfcc, exclude_overlaping
+from feature import extract_mfcc, exclude_overlaping, index_aligned_labels
 from ivector_feat import extract_ivector_from_mfcc
 
 def load_models(config):
@@ -54,6 +54,7 @@ def extract_utt_ivector_by_rttm(config):
             [kaldi_obj.utt2spk[seg['utt']] for seg
                 in filtered_segments]).tolist()
         n_speaker = len(speakers)
+
         
         ref_label = Annotation()
         for seg in filtered_segments:
@@ -63,11 +64,18 @@ def extract_utt_ivector_by_rttm(config):
         ref_label_no_overlap = exclude_overlaping(ref_label)
         
         mfcc_feat = extract_mfcc(signal_data, mfcc_config['sampling_rate'], num_ceps=mfcc_config['num_ceps'], low_freq=mfcc_config['low_freq'], high_freq=mfcc_config['high_freq'], cmn=mfcc_config['cmn'], delta=mfcc_config['delta'])
+        
+        label_array = np.zeros((len(mfcc_feat), n_speaker), dtype=np.int32)
+
+        output_file = os.path.join(config["mfcc_output_directory"], rec_id)
+        np.save(output_file, mfcc_feat)
+        
         mfcc_feat = mfcc_feat.to(device)
         
         start = 0
         end = mfcc_feat.shape[0]
         ivector_emb = []
+        label_ref = []
         frame_shift = 0.01 * sr
         for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
             st, et = segment.start, segment.end
@@ -88,6 +96,8 @@ def extract_utt_ivector_by_rttm(config):
                     sub_len = len(mfcc_feat[rel_start:rel_end, :])
                     ivector_chunk = extract_ivector_from_mfcc(mfcc_feat[rel_start:rel_end, :], ivec_extractor, ubm, diag_ubm, sub_sampling=sub_len)
                     ivector_emb.append(ivector_chunk)
+                    label_array[rel_start:rel_end, speaker_index] = 1
+                    label_ref.append(speaker_index)
         ivector_emb = torch.cat(ivector_emb, dim=0)
         ivector_emb_norm = vec_processor.process(ivector_emb)
         
@@ -100,10 +110,19 @@ def extract_utt_ivector_by_rttm(config):
         ivector_emb_norm = ivector_emb_norm.detach().cpu().numpy()
         clf.fit(ivector_emb_norm, clustering_label)
         
-        print(clf.centroids_.shape)
+        # print(clf.centroids_.shape)
+        # print(clf.classes_)
+
+        index_aligned = index_aligned_labels(clustering_label, label_ref, n_classes=n_speaker)
+        assert len(np.unique(index_aligned)) == n_speaker
+        print(index_aligned)
+        centroids = clf.centroids_[list(index_aligned)]
         
-        output_file = os.path.join(config["output_directory"], rec_id)
-        np.save(output_file, clf.centroids_)
+        output_file = os.path.join(config["ivec_output_directory"], rec_id)
+        np.save(output_file, centroids)
+
+        output_file = os.path.join(config["label_output_directory"], rec_id)
+        np.save(output_file, label_array)
         
 
 if __name__ == "__main__":
@@ -112,22 +131,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', type=str, default='/exhome1/weiguang/code/TSVAD-pytorch/config/ivector_extractor.json', help='JSON file for configuration')
-    parser.add_argument('-p', '--path_dataset', type=str, default='/exhome1/weiguang/data/M2MET/Test_Ali_far', help='Directory for datasets')
-    parser.add_argument('-o', '--output_directory', type=str, default='/exhome1/weiguang/data/M2MET/Test_Ali_far/ivec', help='Directory for output ivectors')
     args = parser.parse_args()
     
     with open(args.config) as f:
         data = f.read()
     config = json.loads(data)
-    
-    if args.path_dataset is None:
-        print("Please enter the dataset path!")
-        sys.exit()
-    if args.output_directory is None:
-        print("Plase enter the directory to store ivectors!")
-        sys.exit()
-    
-    config["path_dataset"] = args.path_dataset
-    config["output_directory"] = args.output_directory
     
     extract_utt_ivector_by_rttm(config)

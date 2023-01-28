@@ -2,6 +2,11 @@
     "model_filepath": "/exhome1/weiguang/data/voxceleb/voxceleb_xvector_outputs/full_system_default/networks/epoch.40.pt",
     "device": "cuda:0",
 
+    "mfcc_output_directory": "/exhome1/weiguang/data/M2MET/Test_Ali_far/mfcc",
+    "xvec_output_directory": "/exhome1/weiguang/data/M2MET/Test_Ali_far/xvec",
+    "label_output_directory": "/exhome1/weiguang/data/M2MET/Test_Ali_far/label",
+    "path_dataset": "/exhome1/weiguang/data/M2MET/Test_Ali_far",
+
     "mfcc_config": {
         "sampling_rate": 16000,
         "frame_length": 25,

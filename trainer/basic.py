@@ -1,6 +1,6 @@
 import torch
 
-from .radam import RAdam 
+# from .radam import RAdam 
 from importlib import import_module
 
 
@@ -29,7 +29,11 @@ class Trainer(object):
         self.learning_rate = learning_rate
 
         if self.opt_param['optim_type'].upper() == 'RADAM':
-            self.optimizer = RAdam( self.model.parameters(), 
+            # self.optimizer = RAdam( self.model.parameters(), 
+            #                         lr=self.opt_param['learning_rate'],
+            #                         betas=(0.5,0.999),
+            #                         weight_decay=0.0)
+            self.optimizer = torch.optim.RAdam( self.model.parameters(), 
                                     lr=self.opt_param['learning_rate'],
                                     betas=(0.5,0.999),
                                     weight_decay=0.0)
@@ -55,7 +59,10 @@ class Trainer(object):
         assert self.model.training
         self.model.zero_grad()
 
-        input = [x.cuda() for x in input]
+        # input = [x.cuda() for x in input]
+        for key in input.keys():
+            input[key] = input[key].cuda()
+        
         loss, loss_detail = self.model(input)
 
         loss.backward()

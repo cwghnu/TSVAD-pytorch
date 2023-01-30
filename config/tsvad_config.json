@@ -5,8 +5,9 @@
         "mfcc_config": "config/mfcc_extractor.json",
         "output_directory": "checkpoints/tsvad",
         "trainer_type": "basic",
-        "model_type": "tsvad_dprnn_v3",
+        "model_type": "TSVAD",
         "max_iter": 500000,
+        "max_epoch": 50,
         "optimize_param": {
             "optim_type": "RAdam",
             "learning_rate": 1e-4,
@@ -17,16 +18,16 @@
                 "last_epoch": -1
             }
         },
-        "batch_size": 32,
-        "nframes": 40,
+        "batch_size": 8,
+        "nframes": 1000,
         "iters_per_checkpoint": 10000,
         "iters_per_log": 1,
         "seed": 1234,
         "checkpoint_path": "",
-        "epochs_per_eval": 5
+        "epochs_per_eval": 1
     },
     "infer_config": {
-        "model_type": "tsvad_dprnn_v3",
+        "model_type": "TSVAD",
         "model_path": "checkpoints_tsvad",
         "output_dir": "hyp"
     },

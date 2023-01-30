@@ -21,10 +21,9 @@ class Dataset(torch.utils.data.Dataset):
         self.ivec_dir = os.path.join(path_dataset, "ivec")
         self.label_dir = os.path.join(path_dataset, "label")
         
-        self.nframes = nframes
         self.rate = mfcc_config["sampling_rate"]
-        self.frame_len = mfcc_config["frame_length"] * self.rate
-        self.frame_shift = mfcc_config["frame_shift"] * self.rate
+        self.frame_len = mfcc_config["frame_length"] * self.rate / 1000
+        self.frame_shift = mfcc_config["frame_shift"] * self.rate  / 1000
         self.subsampling = 1
         self.chunk_size = chunk_size
         self.max_speakers = 4
@@ -32,16 +31,18 @@ class Dataset(torch.utils.data.Dataset):
         self.total_chunk = 0
         for rec in self.kaldi_obj.wavs:
             num_frames = _count_frames(self.kaldi_obj.reco2dur[rec]*self.rate, self.frame_len, self.frame_shift)
-            num_chunks = num_frames // self.frame_lenchunk_size
+            num_chunks = num_frames // self.chunk_size
             self.total_chunk += num_chunks
         self.total_chunk *= 2
         print("[Dataset Msg] total number of chunks: {}".format(self.total_chunk))
 
-    @lru_cache
+        self.utt_ids = list(self.kaldi_obj.wavs.keys())
+
+    # @lru_cache
     def __getitem__(self, index):
         
-        idx_utt = index % len(self.kaldi_obj.wavs)
-        utt_id = self.kaldi_obj.wavs[idx_utt]
+        idx_utt = index % len(self.utt_ids)
+        utt_id = self.utt_ids[idx_utt]
         
         mfcc_utt = np.load(os.path.join(self.mfcc_dir, utt_id + '.npy'))    # [num_frames, 72]
         ivec_utt = np.load(os.path.join(self.ivec_dir, utt_id + '.npy'))    # [num_speakers, 400]
@@ -53,13 +54,21 @@ class Dataset(torch.utils.data.Dataset):
         max_start  = len(mfcc_utt) - self.chunk_size
         idx_start = random.randint(0, max_start)
         
-        mfcc_utt = mfcc_utt[idx_start:(idx_start+self.chunk_size)]
-        label_utt = label_utt[idx_start:(idx_start+self.chunk_size)]
+        mfcc_utt = mfcc_utt[idx_start:(idx_start+self.chunk_size)]      # [num_frames, 72]
+        label_utt = label_utt[idx_start:(idx_start+self.chunk_size)]    # [num_frames, num_speakers]
+
+        num_frames, num_speakers = label_utt.shape
+        ivec_dim = ivec_utt.shape[-1]
+
+        if num_speakers < self.max_speakers:
+            label_utt = np.concatenate((label_utt, np.zeros((num_frames, self.max_speakers - num_speakers))), axis=-1)
+            ivec_utt = np.concatenate((ivec_utt, np.zeros((self.max_speakers - num_speakers, ivec_dim))), axis=0)
+
 
         return {
-            "mfcc": mfcc_utt,
-            "label": label_utt,
-            "ivector": ivec_utt,
+            "mfcc": torch.from_numpy(mfcc_utt).float(),
+            "label": torch.from_numpy(label_utt).float(),
+            "ivector": torch.from_numpy(ivec_utt).float(),
         }
     
     def __len__(self):

@@ -9,9 +9,11 @@ import numpy as np
 from pathlib import Path
 from importlib import import_module
 import json
+import torch.nn as nn
 
 from torch.utils.data import DataLoader
-from util.dataset_loader import Dataset
+
+from dataloader.data_loader import Dataset
 
 def collate_fn(batches):
     mfcc_batches = [item['mfcc'] for item in batches]
@@ -34,6 +36,7 @@ def train(train_config):
     # Initial
     output_directory     = train_config.get('output_directory', '')
     max_iter             = train_config.get('max_iter', 100000)
+    max_epoch             = train_config.get('max_epoch', 100000)
     batch_size           = train_config.get('batch_size', 128)
     nframes              = train_config.get('nframes', 40)
     iters_per_checkpoint = train_config.get('iters_per_checkpoint', 10000)
@@ -67,7 +70,7 @@ def train(train_config):
 
     # Load training data
     trainset = Dataset(train_config['training_dir'], mfcc_config, chunk_size=nframes)    
-    train_loader = DataLoader(trainset, num_workers=32, shuffle=True,
+    train_loader = DataLoader(trainset, num_workers=8, shuffle=True,
                               batch_size=batch_size,
                               pin_memory=True,
                               drop_last=True,
@@ -75,7 +78,7 @@ def train(train_config):
     
     # Load evaluation data
     evalset = Dataset(train_config['eval_dir'], mfcc_config, chunk_size=nframes)    
-    eval_loader = DataLoader(evalset, num_workers=32, shuffle=True,
+    eval_loader = DataLoader(evalset, num_workers=8, shuffle=True,
                               batch_size=batch_size,
                               pin_memory=True,
                               drop_last=True,
@@ -108,7 +111,8 @@ def train(train_config):
     logger.info("Start traininig...")
 
     loss_log = dict()
-    while iteration <= max_iter:
+    # while iteration <= max_iter:
+    while epoch < max_epoch:
         for i, batch in enumerate(train_loader):
             
             iteration, loss_detail, lr = trainer.step(batch, iteration=iteration)
@@ -133,26 +137,41 @@ def train(train_config):
                 logger.info(mseg)
                 loss_log = dict()
 
-            if iteration > max_iter:
-                break
+            # if iteration > max_iter:
+            #     break
             
         epoch += 1
+
         if epoch % epochs_per_eval == 0:
-            der_list = []
+            eval_loss = []
             trainer.model.eval()
             for i, batch in enumerate(eval_loader):
-                preds = trainer.model.inference(batch).squeeze(0).cpu().numpy()
+                with torch.no_grad():
+                    for key in batch.keys():
+                        batch[key] = batch[key].cuda()
+                    preds = trainer.model.inference(batch)
+                    targets = batch["label"]
+                    bs, num_frames = targets.shape[0:2]
+                    loss = nn.BCELoss(reduction='sum')(preds, targets) / num_frames / bs
+                    eval_loss.append(loss.item())
+            mseg = 'Epoch {}:'.format( epoch)
+            mseg += "Eval loss: {}".format(np.mean(eval_loss))
+            logger.info(mseg)
+
+        if epoch > max_epoch:
+            break
         
 
     print('Finished')
         
 
 if __name__ == "__main__":
+
     import argparse
     import json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='tsvad_config.json',
+    parser.add_argument('-c', '--config', type=str, default='config/tsvad_config.json',
                         help='JSON file for configuration')
     parser.add_argument('-o', '--output_directory', type=str, default=None,
                         help='Directory for checkpoint output')
@@ -161,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument('-T', '--training_dir', type=str, default=None,
                         help='Traininig dictionary path')
 
-    parser.add_argument('-g', '--gpu', type=str, default='0',
+    parser.add_argument('-g', '--gpu', type=str, default='1',
                         help='Using gpu #')
     args = parser.parse_args()
 
@@ -179,8 +198,10 @@ if __name__ == "__main__":
         train_config['checkpoint_path'] = args.checkpoint_path
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = False
+    torch.multiprocessing.set_start_method('spawn')
 
     train(train_config)

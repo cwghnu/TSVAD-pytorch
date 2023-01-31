@@ -2,6 +2,7 @@ import sys
 import torch
 import numpy as np
 import torch.nn as nn
+import time
 
 
 class CNN_ReLU_BatchNorm(nn.Module):
@@ -92,10 +93,10 @@ class Model(nn.Module):
         preds   = self.output_layer(outputs).squeeze(-1)         #  B x T x 4
         preds   = nn.Sigmoid()(preds)
         
-        loss = nn.BCELoss(reduction='sum')(preds, targets) / tframe / bs
-        loss_detail = {"diarization loss": loss.item()}
+        # loss = nn.BCELoss(reduction='sum')(preds, targets) / tframe / bs
+        # loss_detail = {"diarization loss": loss.item()}
         
-        return loss, loss_detail
+        return preds
 
     def inference(self, batch): 
         feats, targets, ivectors = batch["mfcc"], batch["label"], batch["ivector"]
@@ -126,12 +127,25 @@ class Model(nn.Module):
 
 if __name__ == "__main__":
     model = Model()
-    
-    batch = {
-        "mfcc": torch.rand((8, 2000, 72)),
-        "label": torch.rand((8, 2000, 4)),
-        "ivector": torch.rand((8, 4, 400)),
-    }
-    
-    loss, _ = model(batch)
-    print(loss)
+
+    data_len = 30*60*60
+    sampling_rate = 16000
+    num_repeats = 50
+    num_frames = int(data_len // (0.01 * sampling_rate))
+
+    time_list = []
+
+    for i in range(num_repeats):
+        batch = {
+            "mfcc": torch.rand((1, num_frames, 72)),
+            "label": torch.rand((1, num_frames, 4)),
+            "ivector": torch.rand((1, 4, 400)),
+        }
+        
+        time_st = time.time()
+        _ = model(batch)
+        time_ed = time.time()
+        time_list.append(time_ed - time_st)
+
+    print(np.mean(time_list))
+        

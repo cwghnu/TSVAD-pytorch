@@ -39,8 +39,8 @@ from kaldi_data import KaldiData
 from feature import extract_mfcc, exclude_overlaping
 
 def test_mfcc():
-    wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
-    # wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"
+    # wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
+    wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"
     signal_data, sr = sf.read(wav_path)
     signal_data = signal_data[:, 0]
 
@@ -69,7 +69,7 @@ def test_mfcc():
     start = 0
     end = mfcc_feat.shape[0]
     kaldi_obj = KaldiData("/exhome1/weiguang/data/M2MET/Test_Ali_far")
-    recid = "R8009_M8026_MS812"
+    recid = "R8002_M8002_MS802"
     filtered_segments = kaldi_obj.segments[recid]
     frame_shift = 0.01 * sr
     rate = sr

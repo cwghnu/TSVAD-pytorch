@@ -70,7 +70,7 @@ def train(train_config):
 
     # Load training data
     trainset = Dataset(train_config['training_dir'], mfcc_config, chunk_size=nframes)    
-    train_loader = DataLoader(trainset, num_workers=8, shuffle=True,
+    train_loader = DataLoader(trainset, num_workers=12, shuffle=True,
                               batch_size=batch_size,
                               pin_memory=True,
                               drop_last=True,
@@ -78,7 +78,7 @@ def train(train_config):
     
     # Load evaluation data
     evalset = Dataset(train_config['eval_dir'], mfcc_config, chunk_size=nframes)    
-    eval_loader = DataLoader(evalset, num_workers=8, shuffle=True,
+    eval_loader = DataLoader(evalset, num_workers=12, shuffle=True,
                               batch_size=batch_size,
                               pin_memory=True,
                               drop_last=True,
@@ -113,6 +113,7 @@ def train(train_config):
     loss_log = dict()
     # while iteration <= max_iter:
     while epoch < max_epoch:
+        trainer.model.train()
         for i, batch in enumerate(train_loader):
             
             iteration, loss_detail, lr = trainer.step(batch, iteration=iteration)
@@ -124,9 +125,9 @@ def train(train_config):
                 loss_log[key].append(val)
             
             # Save model per N iterations
-            if iteration % iters_per_checkpoint == 0:
-                checkpoint_path =  output_directory / "{}_{}".format(time.strftime("%m-%d_%H-%M", time.localtime()),iteration)
-                trainer.save_checkpoint( checkpoint_path)
+            # if iteration % iters_per_checkpoint == 0:
+            #     checkpoint_path =  output_directory / "{}_{}".format(time.strftime("%m-%d_%H-%M", time.localtime()),iteration)
+            #     trainer.save_checkpoint( checkpoint_path)
 
             # Show log per M iterations
             if iteration % iters_per_log == 0 and len(loss_log.keys()) > 0:
@@ -148,7 +149,7 @@ def train(train_config):
             for i, batch in enumerate(eval_loader):
                 with torch.no_grad():
                     for key in batch.keys():
-                        batch[key] = batch[key].cuda()
+                        batch[key] = batch[key].to("cuda:1")
                     preds = trainer.model.inference(batch)
                     targets = batch["label"]
                     bs, num_frames = targets.shape[0:2]
@@ -157,6 +158,9 @@ def train(train_config):
             mseg = 'Epoch {}:'.format( epoch)
             mseg += "Eval loss: {}".format(np.mean(eval_loss))
             logger.info(mseg)
+
+        checkpoint_path =  output_directory / "{}_{}".format(time.strftime("%m-%d_%H-%M", time.localtime()),epoch)
+        trainer.save_checkpoint( checkpoint_path)
 
         if epoch > max_epoch:
             break
@@ -180,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument('-T', '--training_dir', type=str, default=None,
                         help='Traininig dictionary path')
 
-    parser.add_argument('-g', '--gpu', type=str, default='1',
+    parser.add_argument('-g', '--gpu', type=str, default='0,1',
                         help='Using gpu #')
     args = parser.parse_args()
 
@@ -198,7 +202,7 @@ if __name__ == "__main__":
         train_config['checkpoint_path'] = args.checkpoint_path
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+    # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = False

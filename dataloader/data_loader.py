@@ -33,7 +33,6 @@ class Dataset(torch.utils.data.Dataset):
             num_frames = _count_frames(self.kaldi_obj.reco2dur[rec]*self.rate, self.frame_len, self.frame_shift)
             num_chunks = num_frames // self.chunk_size
             self.total_chunk += num_chunks
-        self.total_chunk *= 2
         print("[Dataset Msg] total number of chunks: {}".format(self.total_chunk))
 
         self.utt_ids = list(self.kaldi_obj.wavs.keys())

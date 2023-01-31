@@ -17,15 +17,18 @@ class Trainer(object):
                                     'gamma': 0.5,
                                     'last_epoch': -1
                                 }
-                            })        
+                            })    
+
+        self.gpus = train_config.get('gpus', [1,0])
+        self.device = torch.device("cuda:{}".format(self.gpus[0]))
 
         module = import_module('model.{}'.format(model_type), package=None)
         MODEL = getattr(module, 'Model')
-        model = MODEL().cuda()
+        model = MODEL().to(self.device)
 
         print(model)
 
-        self.model = model.cuda()
+        self.model = model.to(self.device)
         self.learning_rate = learning_rate
 
         if self.opt_param['optim_type'].upper() == 'RADAM':
@@ -59,11 +62,21 @@ class Trainer(object):
         assert self.model.training
         self.model.zero_grad()
 
-        # input = [x.cuda() for x in input]
+        # input = [x.to(self.device) for x in input]
         for key in input.keys():
-            input[key] = input[key].cuda()
+            input[key] = input[key].to(self.device)
+
+        preds = torch.nn.parallel.data_parallel(
+            self.model,
+            (input),
+            self.gpus,
+            self.gpus[0],
+        )
+        bs, tframe = input["label"].shape[0:2]
+        loss = torch.nn.BCELoss(reduction='sum')(preds, input["label"]) / tframe / bs
+        loss_detail = {"diarization loss": loss.item()}
         
-        loss, loss_detail = self.model(input)
+        # loss, loss_detail = self.model(input)
 
         loss.backward()
         if self.opt_param['max_grad_norm'] > 0:

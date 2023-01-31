@@ -18,7 +18,7 @@
                 "last_epoch": -1
             }
         },
-        "batch_size": 8,
+        "batch_size": 12,
         "nframes": 1000,
         "iters_per_checkpoint": 10000,
         "iters_per_log": 1,

@@ -3,7 +3,7 @@
         "training_dir": "/exhome1/weiguang/data/M2MET/Train_Ali_far",
         "eval_dir": "/exhome1/weiguang/data/M2MET/Eval_Ali_far",
         "mfcc_config": "config/mfcc_extractor.json",
-        "output_directory": "checkpoints/tsvad",
+        "output_directory": "checkpoints/tsvad_ivec",
         "trainer_type": "basic",
         "model_type": "TSVAD",
         "max_iter": 500000,
@@ -28,8 +28,13 @@
     },
     "infer_config": {
         "model_type": "TSVAD",
-        "model_path": "checkpoints_tsvad",
-        "output_dir": "hyp"
+        "model_path": "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/tsvad_ivec/02-01_12-04_1",
+        "output_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs",
+        "eval_dir": "/exhome1/weiguang/data/M2MET/Eval_Ali_far",
+        "test_dir": "/exhome1/weiguang/data/M2MET/Test_Ali_far",
+        "mfcc_config": "config/mfcc_extractor.json",
+        "nframes": 1000,
+        "max_speakers": 4
     },
     "model_config": {
         "out_channels": [ 64, 64, 128, 128],

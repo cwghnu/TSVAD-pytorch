@@ -95,27 +95,36 @@ def extract_utt_ivector_by_rttm(config):
                     label_array[rel_start:rel_end, speaker_index] = 1
                     label_ref.append(speaker_index)
         xvector_emb = torch.cat(xvector_emb, dim=0)
+        label_ref = np.array(label_ref)
         
-        score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
-        score_matrix = score_matrix.detach().cpu().numpy()
-        score_matrix = score_matrix - np.min(score_matrix)
-        score_matrix = score_matrix / np.max(score_matrix)
+        # score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
+        # score_matrix = score_matrix.detach().cpu().numpy()
+        # score_matrix = score_matrix - np.min(score_matrix)
+        # score_matrix = score_matrix / np.max(score_matrix)
         
-        clustering_label = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
-        clf = NearestCentroid()
+        # clustering_label = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
+        # clf = NearestCentroid()
         xvector_emb = xvector_emb.detach().cpu().numpy()
-        clf.fit(xvector_emb, clustering_label)
+        # clf.fit(xvector_emb, clustering_label)
         
-        print(clf.centroids_.shape)
-        print(clf.classes_)
+        # print(clf.centroids_.shape)
+        # print(clf.classes_)
         
-        index_aligned = index_aligned_labels(clustering_label, label_ref, n_classes=n_speaker)
-        assert len(np.unique(index_aligned)) == n_speaker
-        print(index_aligned)
-        centroids = clf.centroids_[index_aligned]
+        # index_aligned = index_aligned_labels(clustering_label, label_ref, n_classes=n_speaker)
+        # assert len(np.unique(index_aligned)) == n_speaker
+        # print(index_aligned)
+        # centroids = clf.centroids_[index_aligned]
+
+        centroids = np.zeros((n_speaker, xvector_emb.shape[-1]))
+
+        for i in range(n_speaker):
+            centroids[i, :] = np.mean(xvector_emb[label_ref==i], axis=0)
         
-        output_file = os.path.join(config["output_directory"], rec_id)
+        output_file = os.path.join(config["xvec_output_directory"], rec_id)
         np.save(output_file, centroids)
+
+        output_file = os.path.join(config["label_output_directory"], rec_id)
+        np.save(output_file, label_array)
         
 
 if __name__ == "__main__":
@@ -129,5 +138,12 @@ if __name__ == "__main__":
     with open(args.config) as f:
         data = f.read()
     config = json.loads(data)
+
+    if not os.path.exists(config['mfcc_output_directory']):
+        os.makedirs(config['mfcc_output_directory'])
+    if not os.path.exists(config['xvec_output_directory']):
+        os.makedirs(config['xvec_output_directory'])
+    if not os.path.exists(config['label_output_directory']):
+        os.makedirs(config['label_output_directory'])
     
     extract_utt_ivector_by_rttm(config)

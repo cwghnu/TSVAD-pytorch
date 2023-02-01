@@ -14,6 +14,8 @@ from sklearn.metrics import accuracy_score
 from torchmetrics.functional import pairwise_cosine_similarity
 from torchaudio.compliance.kaldi import mfcc as kaldi_mfcc
 
+from sklearn.neighbors import NearestCentroid
+
 from openTSNE import TSNE
 # from openTSNE.callbacks import ErrorLogger
 from pyannote.core import Annotation, Segment
@@ -36,7 +38,7 @@ from asvtorch.src.networks.network_io import initialize_net
 
 sys.path.append(os.path.dirname(__file__))
 from kaldi_data import KaldiData
-from feature import extract_mfcc, exclude_overlaping
+from feature import extract_mfcc, exclude_overlaping, index_aligned_labels
 
 def test_mfcc():
     # wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
@@ -109,31 +111,6 @@ def test_mfcc():
                 xvector_emb.append(net(mfcc_feat[None, :, rel_start:rel_end], 'extract_embeddings'))
     xvector_emb = torch.cat(xvector_emb, dim=0)
     lebel_emb = np.array(lebel_emb)
-
-    # Test ivectors with t-SNE
-    # ivector_chunk_norm = ivector_chunk_norm.numpy()
-    tsne = TSNE(
-        perplexity=30,
-        metric="cosine",    # euclidean
-        # callbacks=ErrorLogger(),
-        n_jobs=32,
-        random_state=42,
-    )
-    xembeddings = tsne.fit(xvector_emb.detach().cpu().numpy())
-    vis_x = xembeddings[:, 0]
-    vis_y = xembeddings[:, 1]
-    plt.scatter(vis_x, vis_y, c=lebel_emb, cmap=plt.cm.get_cmap("Set3", n_speaker), marker='.')
-    plt.colorbar(ticks=range(n_speaker))
-    plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector.png"), dpi=600)
-
-    
-    # file_plda = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/PLDA/plda.npz"
-    # plda = Plda.load(file_plda, device)
-    # score_matrix = plda.score_all_vs_all(ivector_chunk_norm, ivector_chunk_norm, 200)
-    # score_matrix = score_matrix - np.min(score_matrix)
-    # score_matrix = score_matrix / np.max(score_matrix)
-    # print("score shape: ", score_matrix.shape, score_matrix.max(), score_matrix.min())
     
     score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
     score_matrix = score_matrix.detach().cpu().numpy()
@@ -142,6 +119,43 @@ def test_mfcc():
     # # clustering = AgglomerativeClustering(affinity="precomputed", linkage='single').fit_predict(score_matrix)
     clustering = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
     print("clustering label:", clustering.shape)
+
+    clf = NearestCentroid()
+    xvector_emb = xvector_emb.cpu().numpy()
+    clf.fit(xvector_emb, clustering)
+    
+    # print(clf.centroids_.shape)
+    # print(clf.classes_)
+
+    index_aligned = index_aligned_labels(clustering, lebel_emb, n_classes=n_speaker)
+    assert len(np.unique(index_aligned)) == n_speaker
+    print(index_aligned)
+    centroids = clf.centroids_[list(index_aligned)]
+    
+    for i in range(n_speaker):
+        centroids[i, :] = np.mean(xvector_emb[lebel_emb==i], axis=0)
+
+    xvector_emb_centroids = np.concatenate((xvector_emb, centroids), axis=0)
+
+    tsne = TSNE(
+        perplexity=30,
+        metric="euclidean",    # euclidean
+        # callbacks=ErrorLogger(),
+        n_jobs=32,
+        random_state=42,
+    )
+    xembeddings = tsne.fit(xvector_emb_centroids)
+    vis_x = xembeddings[:-n_speaker, 0]
+    vis_y = xembeddings[:-n_speaker, 1]
+    plt.scatter(vis_x, vis_y, c=lebel_emb, cmap=plt.cm.get_cmap("Set3", n_speaker), marker='.')
+
+    vis_x = xembeddings[-n_speaker:, 0]
+    vis_y = xembeddings[-n_speaker:, 1]
+    plt.scatter(vis_x, vis_y, c=[0,1,2,3], cmap=plt.cm.get_cmap("Set1", n_speaker), marker='.')
+
+    plt.colorbar(ticks=range(n_speaker))
+    plt.clim(-0.5, n_speaker-0.5)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector.png"), dpi=600)
 
     # acc_1 = accuracy_score(lebel_emb, clustering)
     # acc_2 = accuracy_score(1-lebel_emb, clustering)

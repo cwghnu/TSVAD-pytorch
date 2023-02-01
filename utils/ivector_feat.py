@@ -10,6 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering, SpectralClustering
 from torchmetrics.functional import pairwise_cosine_similarity
+from sklearn.neighbors import NearestCentroid
 
 from openTSNE import TSNE
 # from openTSNE.callbacks import ErrorLogger
@@ -30,7 +31,7 @@ from asvtorch.src.backend.plda import Plda
 
 sys.path.append(os.path.dirname(__file__))
 from kaldi_data import KaldiData
-from feature import extract_mfcc, exclude_overlaping
+from feature import extract_mfcc, exclude_overlaping, index_aligned_labels
 
 def topk_(matrix, K, axis=1):
     topk_index = np.argpartition(-matrix, K, axis=axis)[0:K, :]
@@ -151,7 +152,7 @@ def extract_ivector_from_mfcc(frames_mfcc, ivector_extractor, ubm, diag_ubm, sub
 #     return torch.Tensor(mfcc_feat_delta)
 
 def test_mfcc():
-    wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"
+    wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"
     signal_data, sr = sf.read(wav_path)
     signal_data = signal_data[:, 0]
     
@@ -163,17 +164,17 @@ def test_mfcc():
     mfcc_feat = extract_mfcc(signal_data, sr, num_ceps=24, cmn=True, delta=True)
     print("MFCC feature: ", mfcc_feat.shape, type(mfcc_feat))
     
-    # filename_ubm = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ubms/full_ubm_2048/final.ubm"
-    # filename_ive = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ivector_400/ivector_extractors/iter.20.npz"
-    # file_plda = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/PLDA/plda.npz"
-    # file_vec_processor = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/vec_norm/vec_processor"
+    filename_ubm = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ubms/full_ubm_2048/final.ubm"
+    filename_ive = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/ivector_400/ivector_extractors/iter.20.npz"
+    file_plda = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/PLDA/plda.npz"
+    file_vec_processor = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/vec_norm/vec_processor"
     
-    filename_ubm = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/ubms/full_ubm_2048/final.ubm"
-    filename_ive = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/ivector_400/ivector_extractors/iter.20.npz"
-    file_plda = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/PLDA/plda.npz"
-    file_vec_processor = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/vec_norm/vec_processor"
+    # filename_ubm = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/ubms/full_ubm_2048/final.ubm"
+    # filename_ive = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/ivector_400/ivector_extractors/iter.20.npz"
+    # file_plda = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/PLDA/plda.npz"
+    # file_vec_processor = "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs/vec_norm/vec_processor"
 
-    device = torch.device("cuda:0")
+    device = torch.device("cuda:1")
     mfcc_feat = mfcc_feat.to(device)
     ivector_extractor = IVectorExtractor.from_npz_file(filename_ive, device)
     ubm = Gmm.from_kaldi(filename_ubm, device)
@@ -184,7 +185,7 @@ def test_mfcc():
     start = 0
     end = mfcc_feat.shape[0]
     kaldi_obj = KaldiData("/exhome1/weiguang/data/M2MET/Test_Ali_far")
-    recid = "R8009_M8026_MS812"
+    recid = "R8002_M8002_MS802"
     filtered_segments = kaldi_obj.segments[recid]
     frame_shift = 0.01 * sr
     rate = sr
@@ -201,6 +202,8 @@ def test_mfcc():
         ref_label[Segment(seg['st'], seg['et'])] = speaker_index
 
     ref_label_no_overlap = exclude_overlaping(ref_label)
+    
+    mfcc_spks = [torch.zeros((0,72)).to(device)]*n_speaker
 
     for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
         st, et = segment.start, segment.end
@@ -219,28 +222,25 @@ def test_mfcc():
             lebel_emb.append(speaker_index)
             with torch.no_grad():
                 sub_len = len(mfcc_feat[rel_start:rel_end, :])
+                
+                mfcc_spks[speaker_index] = torch.cat((mfcc_spks[speaker_index], mfcc_feat[rel_start:rel_end, :]), dim=0)
+                
                 ivector_chunk = extract_ivector_from_mfcc(mfcc_feat[rel_start:rel_end, :], ivector_extractor, ubm, diag_ubm, sub_sampling=sub_len)
                 ivector_emb.append(ivector_chunk)
+                
     print("ivector shape: ", ivector_chunk.shape)
     ivector_emb = torch.cat(ivector_emb, dim=0)
     ivector_emb_norm = vector_processor.process(ivector_emb)
     lebel_emb = np.array(lebel_emb)
-
-    # Test ivectors with t-SNE
-    tsne = TSNE(
-        perplexity=30,
-        metric="cosine",    # euclidean
-        # callbacks=ErrorLogger(),
-        n_jobs=32,
-        random_state=42,
-    )
-    xembeddings = tsne.fit(ivector_emb_norm.detach().cpu().numpy())
-    vis_x = xembeddings[:, 0]
-    vis_y = xembeddings[:, 1]
-    plt.scatter(vis_x, vis_y, c=lebel_emb, cmap=plt.cm.get_cmap("Set3", n_speaker), marker='.')
-    plt.colorbar(ticks=range(n_speaker))
-    plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-ivector-2spk-aug.png"), dpi=600)
+    
+    ivector_spks = []
+    for mfcc_spk in mfcc_spks:
+        sub_len = len(mfcc_spk)
+        ivector_spk = extract_ivector_from_mfcc(mfcc_spk, ivector_extractor, ubm, diag_ubm, sub_sampling=sub_len)
+        ivector_spks.append(ivector_spk)
+    ivector_spks = torch.cat(ivector_spks, dim=0)
+    ivector_spks = vector_processor.process(ivector_spks)
+    ivector_spks = ivector_spks.cpu().numpy()
 
     plda = Plda.load(file_plda, device)
     score_matrix = plda.score_all_vs_all(ivector_emb_norm, ivector_emb_norm, 200)
@@ -264,21 +264,55 @@ def test_mfcc():
     # plt.figure()
     # plt.plot(time_tick, predicted_label, linewidth=2.0)
     # plt.savefig(os.path.join(os.path.dirname(__file__), "diar_clustering.png"), dpi=600)
-
-    idx = 0
-    for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
-        st, et = segment.start, segment.end
-        hyp_label[Segment(st, et)] = clustering[idx]
-        idx += 1
     
-    # for idx, seg in enumerate(filtered_segments):
-    #     speaker_index = speakers.index(kaldi_obj.utt2spk[seg['utt']])
-    #     hyp_label[Segment(seg['st'], seg['et'])] = clustering[idx]
+    # clf = NearestCentroid()
+    ivector_emb_norm = ivector_emb_norm.cpu().numpy()
+    # clf.fit(ivector_emb_norm, clustering)
 
-    diarizationErrorRate = DiarizationErrorRate(skip_overlap=False, collar=0.25)
-    diar_info = diarizationErrorRate(ref_label_no_overlap, hyp_label, detailed=True, uem=Segment(0, utt_len))
-    print(diar_info)
-    return diar_info['diarization error rate']
+    # index_aligned = index_aligned_labels(clustering, lebel_emb, n_classes=n_speaker)
+    # assert len(np.unique(index_aligned)) == n_speaker
+    # print(index_aligned)
+    # centroids = clf.centroids_[list(index_aligned)]
+    
+    # for i in range(n_speaker):
+    #     centroids[i, :] = np.mean(ivector_emb_norm[lebel_emb==i], axis=0)
+
+    ivector_emb_centroids = np.concatenate((ivector_emb_norm, ivector_spks), axis=0)
+    
+    # Test ivectors with t-SNE
+    tsne = TSNE(
+        perplexity=30,
+        metric="euclidean",    # euclidean
+        # callbacks=ErrorLogger(),
+        n_jobs=32,
+        random_state=42,
+    )
+    xembeddings = tsne.fit(ivector_emb_centroids)
+    vis_x = xembeddings[:-n_speaker, 0]
+    vis_y = xembeddings[:-n_speaker, 1]
+    plt.scatter(vis_x, vis_y, c=lebel_emb, cmap=plt.cm.get_cmap("Set3", n_speaker), marker='.')
+
+    vis_x = xembeddings[-n_speaker:, 0]
+    vis_y = xembeddings[-n_speaker:, 1]
+    plt.scatter(vis_x, vis_y, c=[0,1,2,3], cmap=plt.cm.get_cmap("Set1", n_speaker), marker='.')
+    plt.colorbar(ticks=range(n_speaker))
+    plt.clim(-0.5, n_speaker-0.5)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-ivector-4spk.png"), dpi=600)
+
+    # idx = 0
+    # for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
+    #     st, et = segment.start, segment.end
+    #     hyp_label[Segment(st, et)] = clustering[idx]
+    #     idx += 1
+    
+    # # for idx, seg in enumerate(filtered_segments):
+    # #     speaker_index = speakers.index(kaldi_obj.utt2spk[seg['utt']])
+    # #     hyp_label[Segment(seg['st'], seg['et'])] = clustering[idx]
+
+    # diarizationErrorRate = DiarizationErrorRate(skip_overlap=False, collar=0.25)
+    # diar_info = diarizationErrorRate(ref_label_no_overlap, hyp_label, detailed=True, uem=Segment(0, utt_len))
+    # print(diar_info)
+    # return diar_info['diarization error rate']
     
 
 def test_ivector_plda_ahc_with_clean_data():

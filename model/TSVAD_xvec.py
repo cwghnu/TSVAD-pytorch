@@ -50,7 +50,7 @@ class Model(nn.Module):
         batchnorm = nn.BatchNorm2d(1, eps=0.001, momentum=0.99)
         
         cnn_relu_batchnorm1 = CNN_ReLU_BatchNorm(in_channels=1, out_channels=out_channels[0])
-        cnn_relu_batchnorm2 = CNN_ReLU_BatchNorm(in_channels=out_channels[0], out_channels=out_channels[1], stride=(1, 2))
+        cnn_relu_batchnorm2 = CNN_ReLU_BatchNorm(in_channels=out_channels[0], out_channels=out_channels[1])
         cnn_relu_batchnorm3 = CNN_ReLU_BatchNorm(in_channels=out_channels[1], out_channels=out_channels[2], stride=(1, 2))
         cnn_relu_batchnorm4 = CNN_ReLU_BatchNorm(in_channels=out_channels[2], out_channels=out_channels[3])
         
@@ -62,7 +62,7 @@ class Model(nn.Module):
                       cnn_relu_batchnorm4
                    )
         
-        self.linear = nn.Linear(out_channels[-1]*18+400, 3*rproj)
+        self.linear = nn.Linear(out_channels[-1]*15+512, 3*rproj)
         self.rnn_speaker_detection = BLSTMP(3*rproj, cell, num_layers=2)
         self.rnn_combine = BLSTMP(8*nproj, cell)
 
@@ -71,17 +71,17 @@ class Model(nn.Module):
     def forward(self, batch):
         feats, targets, vectors = batch["mfcc"], batch["label"], batch["spk_vector"]
 
-        feats = feats[:, None, ...] # [B, 1， num_frames, 72]
+        feats = feats[:, None, ...] # [B, 1， num_frames, 30]
         feats = self.cnn(feats)
-        bs, chan, tframe, dim = feats.size()    # [B, 128, 2000, 18]
+        bs, chan, tframe, dim = feats.size()    # [B, 128, 2000, 15]
         
         feats    = feats.permute(0, 2, 1, 3)
-        feats    = feats.contiguous().view(bs, tframe, chan*dim) # B x 1 x T x 2304
-        feats    = feats.unsqueeze(1).repeat(1, 4, 1, 1)         # B x 4 x T x 2304
-        vectors = vectors.view(bs, 4, 400).unsqueeze(2)        # B x 4 x 1 x 400
-        vectors = vectors.repeat(1, 1, tframe, 1)              # B x 4 x T x 400
+        feats    = feats.contiguous().view(bs, tframe, chan*dim) # B x 1 x T x 1920
+        feats    = feats.unsqueeze(1).repeat(1, 4, 1, 1)         # B x 4 x T x 1920
+        vectors = vectors.view(bs, 4, 512).unsqueeze(2)        # B x 4 x 1 x 512
+        vectors = vectors.repeat(1, 1, tframe, 1)              # B x 4 x T x 512
         
-        sd_in  = torch.cat((feats, vectors), dim=-1)            #  B x 4 x T x 2704
+        sd_in  = torch.cat((feats, vectors), dim=-1)            #  B x 4 x T x 2432
         sd_in  = self.linear(sd_in).view(4*bs, tframe, -1)       # 4B x T x 384
         sd_out = self.rnn_speaker_detection(sd_in)               # 4B x T x 320
         sd_out = sd_out.contiguous().view(bs, 4, tframe, -1)     #  B x 4 x T x 320
@@ -101,17 +101,17 @@ class Model(nn.Module):
     def inference(self, batch): 
         feats, targets, vectors = batch["mfcc"], batch["label"], batch["spk_vector"]
 
-        feats = feats[:, None, ...] # [B, 1， num_frames, 72]
+        feats = feats[:, None, ...] # [B, 1， num_frames, 30]
         feats = self.cnn(feats)
-        bs, chan, tframe, dim = feats.size()
+        bs, chan, tframe, dim = feats.size()    # [B, 128, 2000, 15]
         
         feats    = feats.permute(0, 2, 1, 3)
-        feats    = feats.contiguous().view(bs, tframe, chan*dim) # B x 1 x T x 2304
-        feats    = feats.unsqueeze(1).repeat(1, 4, 1, 1)         # B x 4 x T x 2304
-        vectors = vectors.view(bs, 4, 400).unsqueeze(2)        # B x 4 x 1 x 400
-        vectors = vectors.repeat(1, 1, tframe, 1)              # B x 4 x T x 400
+        feats    = feats.contiguous().view(bs, tframe, chan*dim) # B x 1 x T x 1920
+        feats    = feats.unsqueeze(1).repeat(1, 4, 1, 1)         # B x 4 x T x 1920
+        vectors = vectors.view(bs, 4, 512).unsqueeze(2)        # B x 4 x 1 x 512
+        vectors = vectors.repeat(1, 1, tframe, 1)              # B x 4 x T x 512
         
-        sd_in  = torch.cat((feats, vectors), dim=-1)            #  B x 4 x T x 2704
+        sd_in  = torch.cat((feats, vectors), dim=-1)            #  B x 4 x T x 2432
         sd_in  = self.linear(sd_in).view(4*bs, tframe, -1)       # 4B x T x 384
         sd_out = self.rnn_speaker_detection(sd_in)               # 4B x T x 320
         sd_out = sd_out.contiguous().view(bs, 4, tframe, -1)     #  B x 4 x T x 320
@@ -130,16 +130,16 @@ if __name__ == "__main__":
 
     data_len = 30*60*60
     sampling_rate = 16000
-    num_repeats = 50
+    num_repeats = 10
     num_frames = int(data_len // (0.01 * sampling_rate))
 
     time_list = []
 
     for i in range(num_repeats):
         batch = {
-            "mfcc": torch.rand((1, num_frames, 72)),
+            "mfcc": torch.rand((1, num_frames, 30)),
             "label": torch.rand((1, num_frames, 4)),
-            "ivector": torch.rand((1, 4, 400)),
+            "xvector": torch.rand((1, 4, 512)),
         }
         
         time_st = time.time()

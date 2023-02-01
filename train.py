@@ -18,16 +18,16 @@ from dataloader.data_loader import Dataset
 def collate_fn(batches):
     mfcc_batches = [item['mfcc'] for item in batches]
     label_batches = [item['label'] for item in batches]
-    ivector_batches = [item['ivector'] for item in batches]
+    vector_batches = [item['spk_vector'] for item in batches]
     
     mfcc_batches = torch.stack(mfcc_batches)
     label_batches = torch.stack(label_batches)
-    ivector_batches = torch.stack(ivector_batches)
+    vector_batches = torch.stack(vector_batches)
     
     egs = {
         'mfcc': mfcc_batches,
         'label': label_batches,
-        "ivector": ivector_batches,
+        "spk_vector": vector_batches,
     }
     
     return egs
@@ -177,12 +177,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', type=str, default='config/tsvad_config.json',
                         help='JSON file for configuration')
-    parser.add_argument('-o', '--output_directory', type=str, default=None,
-                        help='Directory for checkpoint output')
-    parser.add_argument('-p', '--checkpoint_path', type=str, default=None,
-                        help='checkpoint path to keep training')
-    parser.add_argument('-T', '--training_dir', type=str, default=None,
-                        help='Traininig dictionary path')
 
     parser.add_argument('-g', '--gpu', type=str, default='0,1',
                         help='Using gpu #')
@@ -195,11 +189,6 @@ if __name__ == "__main__":
     train_config = config["train_config"]
     global model_config
     model_config = config["model_config"]
-
-    if args.output_directory is not None:
-        train_config['output_directory'] = args.output_directory
-    if args.checkpoint_path is not None:
-        train_config['checkpoint_path'] = args.checkpoint_path
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"

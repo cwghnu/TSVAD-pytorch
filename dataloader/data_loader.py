@@ -4,6 +4,7 @@ import torch
 import random
 import numpy as np
 from utils.kaldi_data import KaldiData
+from itertools import permutations
 
 def _count_frames(data_len, size, step):
     # no padding at edges, last remaining samples are ignored
@@ -14,11 +15,12 @@ class Dataset(torch.utils.data.Dataset):
     This is the main class that calculates the spectrogram and returns the
     spectrogram, audio pair.
     """
-    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, max_speakers=4):
+    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, max_speakers=4, permute_spk=True, vec_type="ivec"):
 
+        self.vec_type = vec_type
         self.kaldi_obj = KaldiData(path_dataset)
         self.mfcc_dir = os.path.join(path_dataset, "mfcc")
-        self.ivec_dir = os.path.join(path_dataset, "ivec")
+        self.vec_dir = os.path.join(path_dataset, self.vec_type)
         self.label_dir = os.path.join(path_dataset, "label")
         
         self.rate = mfcc_config["sampling_rate"]
@@ -26,7 +28,7 @@ class Dataset(torch.utils.data.Dataset):
         self.frame_shift = mfcc_config["frame_shift"] * self.rate  / 1000
         self.subsampling = 1
         self.chunk_size = chunk_size
-        self.max_speakers = 4
+        self.max_speakers = max_speakers
         
         self.total_chunk = 0
         for rec in self.kaldi_obj.wavs:
@@ -36,6 +38,8 @@ class Dataset(torch.utils.data.Dataset):
         print("[Dataset Msg] total number of chunks: {}".format(self.total_chunk))
 
         self.utt_ids = list(self.kaldi_obj.wavs.keys())
+        self.permute_spk = permute_spk
+        self.all_permutations = list(permutations(np.arange(self.max_speakers), self.max_speakers))
 
     # @lru_cache
     def __getitem__(self, index):
@@ -44,11 +48,11 @@ class Dataset(torch.utils.data.Dataset):
         utt_id = self.utt_ids[idx_utt]
         
         mfcc_utt = np.load(os.path.join(self.mfcc_dir, utt_id + '.npy'))    # [num_frames, 72]
-        ivec_utt = np.load(os.path.join(self.ivec_dir, utt_id + '.npy'))    # [num_speakers, 400]
+        vec_utt = np.load(os.path.join(self.vec_dir, utt_id + '.npy'))    # [num_speakers, 400]
         label_utt = np.load(os.path.join(self.label_dir, utt_id + '.npy'))  # [num_frames, num_speakers]
         
         assert len(mfcc_utt) == len(label_utt)
-        assert len(ivec_utt) == label_utt.shape[1]
+        assert len(vec_utt) == label_utt.shape[1]
         
         max_start  = len(mfcc_utt) - self.chunk_size
         idx_start = random.randint(0, max_start)
@@ -57,17 +61,23 @@ class Dataset(torch.utils.data.Dataset):
         label_utt = label_utt[idx_start:(idx_start+self.chunk_size)]    # [num_frames, num_speakers]
 
         num_frames, num_speakers = label_utt.shape
-        ivec_dim = ivec_utt.shape[-1]
+        ivec_dim = vec_utt.shape[-1]
 
         if num_speakers < self.max_speakers:
             label_utt = np.concatenate((label_utt, np.zeros((num_frames, self.max_speakers - num_speakers))), axis=-1)
-            ivec_utt = np.concatenate((ivec_utt, np.zeros((self.max_speakers - num_speakers, ivec_dim))), axis=0)
+            vec_utt = np.concatenate((vec_utt, np.zeros((self.max_speakers - num_speakers, ivec_dim))), axis=0)
+
+        if self.permute_spk:
+            idx_permutation = random.randint(0, len(self.all_permutations)-1)
+            array_permutation = list(self.all_permutations[idx_permutation])
+            vec_utt = vec_utt[array_permutation]
+            label_utt = label_utt[..., array_permutation]
 
 
         return {
             "mfcc": torch.from_numpy(mfcc_utt).float(),
             "label": torch.from_numpy(label_utt).float(),
-            "ivector": torch.from_numpy(ivec_utt).float(),
+            "spk_vector": torch.from_numpy(vec_utt).float(),
         }
     
     def __len__(self):

@@ -12,6 +12,9 @@ import json
 from torch.utils.data import DataLoader
 from dataloader.data_loader import Dataset
 
+from utils.make_rttm import make_rttm
+from utils.cal_der import cal_der
+
 def compute_tsvad_weights(writer, utt, preds):
     for i in range(4):
         pred = preds[:, i]
@@ -25,6 +28,8 @@ def inference(infer_config):
     output_dir = infer_config.get('output_dir', '')
     nframes              = infer_config.get('nframes', 40)
     max_speakers    = infer_config.get('max_speakers', 4)
+    hyp_rttm_dir = infer_config.get('hyp_rttm_dir', '')
+    ref_rttm_dir = infer_config.get('ref_rttm_dir', '')
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -108,6 +113,8 @@ def inference(infer_config):
         output_file = os.path.join(output_dir, utt_id)
         np.save(output_file, outdata)
 
+    make_rttm(output_dir, hyp_rttm_dir)
+    cal_der(hyp_rttm_dir, ref_rttm_dir)
                 
 if __name__ == "__main__":
     import argparse

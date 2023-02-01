@@ -16,10 +16,10 @@ def load_rttm(file_name):
             rttm_content.append(line.rstrip())
     return rttm_content
 
-if __name__ == "__main__":
+def cal_der(pre_rttm_dir, ref_rttm_dir)
 
-    ref_rttm_dir = "/exhome1/weiguang/data/M2MET/Eval_Ali_far/rttm_dir"
-    pre_rttm_dir = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
+    # ref_rttm_dir = "/exhome1/weiguang/data/M2MET/Eval_Ali_far/rttm_dir"
+    # pre_rttm_dir = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
 
     list_result_dict = []
     num_spkrs_list = []

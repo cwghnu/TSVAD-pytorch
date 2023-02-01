@@ -7,7 +7,7 @@ sys.path.insert(0,os.getcwd())
 from utils.diarization import read_rttm, rttm2annotation
 from pyannote.core import Annotation, Segment, Timeline
 
-def make_rttm(hyp_probs_path, hyp_rttm_path)
+def make_rttm(hyp_probs_path, hyp_rttm_path):
 
     # hyp_probs_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs"
     # hyp_rttm_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"

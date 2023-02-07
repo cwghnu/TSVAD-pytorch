@@ -1,11 +1,11 @@
 {
     "model_filepath": "/exhome1/weiguang/data/voxceleb/voxceleb_xvector_outputs/full_system_default/networks/epoch.40.pt",
-    "device": "cuda:1",
+    "device": "cuda:0",
 
-    "mfcc_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/mfcc_xvec",
-    "xvec_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/xvec",
-    "label_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/label_xvec",
-    "path_dataset": "/exhome1/weiguang/data/M2MET/Train_Ali_far",
+    "mfcc_output_directory": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far/mfcc_xvec",
+    "xvec_output_directory": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far/xvec",
+    "label_output_directory": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far/label_xvec",
+    "path_dataset": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far",
 
     "mfcc_config": {
         "sampling_rate": 16000,

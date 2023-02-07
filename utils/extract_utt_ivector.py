@@ -105,11 +105,12 @@ def task(rec_id, wav_path, config):
     
     ivector_spks = []
     for mfcc_spk in mfcc_spks:
-        sub_len = len(mfcc_spk)
-        ivector_spk = extract_ivector_from_mfcc(mfcc_spk, ivec_extractor, ubm, diag_ubm, sub_sampling=sub_len)
-        ivector_spks.append(ivector_spk)
+        with torch.no_grad():
+            sub_len = len(mfcc_spk)
+            ivector_spk = extract_ivector_from_mfcc(mfcc_spk, ivec_extractor, ubm, diag_ubm, sub_sampling=sub_len)
+            ivector_spks.append(ivector_spk)
     ivector_spks = torch.cat(ivector_spks, dim=0)
-    ivector_spks = vec_processor.process(ivector_spks)
+    # ivector_spks = vec_processor.process(ivector_spks)
     ivector_spks = ivector_spks.cpu().numpy()
     
     # score_matrix = plda.score_all_vs_all(ivector_emb_norm, ivector_emb_norm, 200)
@@ -161,5 +162,12 @@ if __name__ == "__main__":
     with open(args.config) as f:
         data = f.read()
     config = json.loads(data)
+
+    if not os.path.exists(config['mfcc_output_directory']):
+        os.makedirs(config['mfcc_output_directory'])
+    if not os.path.exists(config['ivec_output_directory']):
+        os.makedirs(config['ivec_output_directory'])
+    if not os.path.exists(config['label_output_directory']):
+        os.makedirs(config['label_output_directory'])
     
     extract_utt_ivector_by_rttm(config)

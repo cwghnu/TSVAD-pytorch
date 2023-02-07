@@ -16,16 +16,16 @@ from torch.utils.data import DataLoader
 from dataloader.data_loader import Dataset
 
 def collate_fn(batches):
-    mfcc_batches = [item['mfcc'] for item in batches]
+    feat_batches = [item['feat'] for item in batches]
     label_batches = [item['label'] for item in batches]
     vector_batches = [item['spk_vector'] for item in batches]
     
-    mfcc_batches = torch.stack(mfcc_batches)
+    feat_batches = torch.stack(feat_batches)
     label_batches = torch.stack(label_batches)
     vector_batches = torch.stack(vector_batches)
     
     egs = {
-        'mfcc': mfcc_batches,
+        'feat': feat_batches,
         'label': label_batches,
         "spk_vector": vector_batches,
     }
@@ -69,20 +69,40 @@ def train(train_config):
     mfcc_config = mfcc_config["mfcc_config"]
 
     # Load training data
-    trainset = Dataset(train_config['training_dir'], mfcc_config, chunk_size=nframes)    
-    train_loader = DataLoader(trainset, num_workers=12, shuffle=True,
-                              batch_size=batch_size,
-                              pin_memory=True,
-                              drop_last=True,
-                              collate_fn=collate_fn)
+    trainset = Dataset(
+        train_config['training_dir'], 
+        mfcc_config, 
+        chunk_size=nframes,
+        vec_type=train_config['vec_type'], 
+        feat_type=train_config['feat_type']
+    )    
+    train_loader = DataLoader(
+        trainset, 
+        num_workers=train_config['num_workers'], 
+        shuffle=True,
+        batch_size=batch_size,
+        pin_memory=True,
+        drop_last=True,
+        collate_fn=collate_fn
+    )
     
     # Load evaluation data
-    evalset = Dataset(train_config['eval_dir'], mfcc_config, chunk_size=nframes)    
-    eval_loader = DataLoader(evalset, num_workers=12, shuffle=True,
-                              batch_size=batch_size,
-                              pin_memory=True,
-                              drop_last=True,
-                              collate_fn=collate_fn)
+    evalset = Dataset(
+        train_config['eval_dir'], 
+        mfcc_config, 
+        chunk_size=nframes,
+        vec_type=train_config['vec_type'], 
+        feat_type=train_config['feat_type']
+    )    
+    eval_loader = DataLoader(
+        evalset, 
+        num_workers=train_config['num_workers'],
+        shuffle=True,
+        batch_size=batch_size,
+        pin_memory=True,
+        drop_last=True,
+        collate_fn=collate_fn
+    )
 
     # Get shared output_directory ready
     output_directory = Path(output_directory)
@@ -150,7 +170,7 @@ def train(train_config):
                 with torch.no_grad():
                     for key in batch.keys():
                         batch[key] = batch[key].to("cuda:1")
-                    preds = trainer.model.inference(batch)
+                    preds = trainer.model(batch)
                     targets = batch["label"]
                     bs, num_frames = targets.shape[0:2]
                     loss = nn.BCELoss(reduction='sum')(preds, targets) / num_frames / bs

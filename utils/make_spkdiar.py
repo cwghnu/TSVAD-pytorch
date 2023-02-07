@@ -97,7 +97,7 @@ def write_reco2dur(df_wav, output_path):
     with open(output_path + '/reco2dur', 'w') as f:
         for key,file_path in zip(df_wav['key'], df_wav['file_path']):
             data_signal, sampling_rate = sf.read(file_path)
-            data_len = data_signal.shape[0] / sampling_rate
+            data_len = round(data_signal.shape[0] / sampling_rate, 3)
             f.write('%s %f\n' % (key, data_len))
 
 def make_spkdiar(list_path, wav_path, output_path, bin_wav):
@@ -141,9 +141,9 @@ if __name__ == "__main__":
         fromfile_prefix_chars='@',
         description='Make JSALT19 datasets for spk diarization')
 
-    parser.add_argument('--list-path', dest='list_path', default="/export/home2/cwguang/datasets/Train_Ali_far", required=False)
-    parser.add_argument('--wav-path', dest='wav_path', default="/export/home2/cwguang/datasets/Train_Ali_far/audio_dir", required=False)
-    parser.add_argument('--output-path', dest='output_path', default="/export/home2/cwguang/datasets/Train_Ali_far",  required=False)
+    parser.add_argument('--list-path', dest='list_path', default="/exhome1/weiguang/data/Alimeeting/Train_Ali_far", required=False)
+    parser.add_argument('--wav-path', dest='wav_path', default="/exhome1/weiguang/data/Alimeeting/Train_Ali_far/audio_dir", required=False)
+    parser.add_argument('--output-path', dest='output_path', default="/exhome1/weiguang/data/Alimeeting/Train_Ali_far",  required=False)
     parser.add_argument('--bin-wav', dest='bin_wav', default=False, action='store_true')
     args=parser.parse_args()
     

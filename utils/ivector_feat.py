@@ -230,7 +230,8 @@ def test_mfcc():
                 
     print("ivector shape: ", ivector_chunk.shape)
     ivector_emb = torch.cat(ivector_emb, dim=0)
-    ivector_emb_norm = vector_processor.process(ivector_emb)
+    # ivector_emb_norm = vector_processor.process(ivector_emb)
+    ivector_emb_norm = ivector_emb
     lebel_emb = np.array(lebel_emb)
     
     ivector_spks = []
@@ -239,7 +240,7 @@ def test_mfcc():
         ivector_spk = extract_ivector_from_mfcc(mfcc_spk, ivector_extractor, ubm, diag_ubm, sub_sampling=sub_len)
         ivector_spks.append(ivector_spk)
     ivector_spks = torch.cat(ivector_spks, dim=0)
-    ivector_spks = vector_processor.process(ivector_spks)
+    # ivector_spks = vector_processor.process(ivector_spks)
     ivector_spks = ivector_spks.cpu().numpy()
 
     plda = Plda.load(file_plda, device)
@@ -297,7 +298,7 @@ def test_mfcc():
     plt.scatter(vis_x, vis_y, c=[0,1,2,3], cmap=plt.cm.get_cmap("Set1", n_speaker), marker='.')
     plt.colorbar(ticks=range(n_speaker))
     plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-ivector-4spk.png"), dpi=600)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-ivector-4spk-nonorm.png"), dpi=600)
 
     # idx = 0
     # for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):

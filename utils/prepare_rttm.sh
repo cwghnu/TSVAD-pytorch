@@ -1,4 +1,4 @@
-work_dir=/export/home2/cwguang/datasets/Train_Ali_far
+work_dir=/exhome1/weiguang/data/Alimeeting/Train_Ali_far
 textgrid_dir=$work_dir/textgrid_dir
 dia_rttm_dir=$work_dir/rttm_groundtruth
 wav_dir=$work_dir/audio_dir

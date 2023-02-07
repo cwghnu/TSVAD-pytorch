@@ -4,6 +4,7 @@ from itertools import permutations
 import copy
 
 from torchaudio.compliance.kaldi import mfcc as kaldi_mfcc
+from torchaudio.compliance.kaldi import fbank as kaldi_fbank
 from kaldi.matrix import SubVector, SubMatrix
 from kaldi.feat.functions import compute_deltas, DeltaFeaturesOptions, SlidingWindowCmnOptions, sliding_window_cmn
 from pyannote.core import Annotation, Segment, Timeline
@@ -28,6 +29,12 @@ def extract_mfcc(signal_data, sr, num_mel_bins=30, num_ceps=30, low_freq=20, hig
         mfcc_feat = mfcc_feat.numpy()
 
     return torch.Tensor(mfcc_feat)
+
+def extract_fbank(signal_data, sr, num_mel_bins=80, low_freq=20, high_freq=0.0):
+    
+    logmel_feat = kaldi_fbank(torch.Tensor(signal_data)[None, :], sample_frequency=sr, frame_length=25, frame_shift=10, low_freq=low_freq, high_freq=high_freq, num_mel_bins=num_mel_bins, snip_edges=False)
+
+    return logmel_feat
 
 def exclude_overlaping(annotation: 'Annotation') -> Annotation:
     overlap_timeline = Timeline()

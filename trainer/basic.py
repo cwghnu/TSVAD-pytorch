@@ -24,7 +24,7 @@ class Trainer(object):
 
         module = import_module('model.{}'.format(model_type), package=None)
         MODEL = getattr(module, 'Model')
-        model = MODEL().to(self.device)
+        model = MODEL(**model_config).to(self.device)
 
         print(model)
 

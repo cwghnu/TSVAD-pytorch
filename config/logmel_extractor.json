@@ -1,0 +1,10 @@
+{
+    "logmel_config": {
+        "sampling_rate": 16000,
+        "frame_length": 25,
+        "frame_shift": 10,
+        "low_freq": 20,
+        "high_freq": 0.0,
+        "num_mel_bins": 80
+    }
+}

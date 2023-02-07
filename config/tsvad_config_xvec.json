@@ -3,7 +3,7 @@
         "training_dir": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far",
         "eval_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far",
         "mfcc_config": "config/mfcc_extractor.json",
-        "output_directory": "checkpoints/tsvad_ivec_logmel_5",
+        "output_directory": "checkpoints/tsvad_xvec_logmel_5",
         "trainer_type": "basic",
         "model_type": "TSVAD",
         "max_iter": 500000,
@@ -18,36 +18,35 @@
                 "last_epoch": -1
             }
         },
-        "batch_size": 12,
+        "batch_size": 16,
         "nframes": 800,
         "iters_per_checkpoint": 10000,
         "iters_per_log": 1,
         "seed": 1234,
         "checkpoint_path": "",
         "epochs_per_eval": 1,
-        "vec_type": "ivec",
+        "vec_type": "xvec",
         "feat_type": "logmel",
-        "num_workers": 16
+        "num_workers": 24
     },
     "infer_config": {
         "model_type": "TSVAD",
-        "model_path": "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/tsvad_ivec_logmel_5/02-07_07-22_10",
+        "model_path": "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/tsvad_xvec_logmel_5/02-06_14-09_2",
         "output_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs",
         "hyp_rttm_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm",
         "ref_rttm_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/rttm_groundtruth",
         "eval_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far",
         "test_dir": "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far",
         "mfcc_config": "config/mfcc_extractor.json",
-        "nframes": 800,
+        "nframes": 1000,
         "max_speakers": 4,
-        "vec_type": "ivec",
+        "vec_type": "xvec",
         "feat_type": "logmel"
     },
     "model_config": {
         "out_channels": [ 64, 64, 128, 128],
         "nproj": 384,
         "cell": 896,
-        "feat_dim": 80, 
-        "vec_dim": 400
+        "dprnn_layers": 6
     }
 }

@@ -13,7 +13,7 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
     # hyp_rttm_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
 
     threshold = 0.4
-    median = 51
+    median = 7
     sampling_rate = 16000
     frame_shift = sampling_rate * 0.01
     subsampling = 1
@@ -28,14 +28,15 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
         file_full_path = os.path.join(hyp_probs_path, filepath)
         rttm_full_path = os.path.join(hyp_rttm_path, session+".rttm")
         data = np.load(file_full_path)
-        a = np.where(data > threshold, 1, 0)
+
+        data = np.where(data > threshold, 1, 0)
 
         if median > 1:
-            a = medfilt(a, (median, 1))
+            data = medfilt(data, (median, 1))
 
         with open(rttm_full_path, 'w') as wf:
 
-            for spkid, frames in enumerate(a.T):
+            for spkid, frames in enumerate(data.T):
                 frames = np.pad(frames, (1, 1), 'constant')
                 changes, = np.where(np.diff(frames, axis=0) != 0)
                 fmt = "SPEAKER {:s} 1 {:.2f} {:.2f} <NA> <NA> {:s} <NA> <NA>"
@@ -57,3 +58,8 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
                 filtered_annot[Segment(segment.start, segment.end)] = label
         with open(rttm_full_path, 'w') as wf:
             filtered_annot.write_rttm(wf)
+
+if __name__ == "__main__":
+    hyp_probs_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs"
+    hyp_rttm_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
+    make_rttm(hyp_probs_path, hyp_rttm_path)

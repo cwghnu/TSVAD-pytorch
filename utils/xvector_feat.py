@@ -111,6 +111,8 @@ def test_mfcc():
                 xvector_emb.append(net(mfcc_feat[None, :, rel_start:rel_end], 'extract_embeddings'))
     xvector_emb = torch.cat(xvector_emb, dim=0)
     lebel_emb = np.array(lebel_emb)
+
+    print("lebel_emb", np.unique(lebel_emb))
     
     score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
     score_matrix = score_matrix.detach().cpu().numpy()

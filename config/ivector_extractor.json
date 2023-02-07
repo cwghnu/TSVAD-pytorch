@@ -5,10 +5,10 @@
     "vec_processor_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/vec_norm/vec_processor",
     "device": "cuda:1",
 
-    "mfcc_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/mfcc",
-    "ivec_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/ivec",
-    "label_output_directory": "/exhome1/weiguang/data/M2MET/Train_Ali_far/label",
-    "path_dataset": "/exhome1/weiguang/data/M2MET/Train_Ali_far",
+    "mfcc_output_directory": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far/mfcc_ivec",
+    "ivec_output_directory": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far/ivec",
+    "label_output_directory": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far/label_ivec",
+    "path_dataset": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far",
 
     "mfcc_config": {
         "sampling_rate": 16000,

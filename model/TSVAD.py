@@ -44,7 +44,7 @@ class BLSTMP(nn.Module):
      
 
 class Model(nn.Module):
-    def __init__(self, feat_dim=80, vec_dim=400, out_channels=[64, 64, 128, 128], rproj=256, nproj=256, cell=896):
+    def __init__(self, feat_dim=80, vec_dim=400, out_channels=[64, 64, 128, 128], rproj=128, nproj=160, cell=896):
         super(Model, self).__init__()
 
         self.feat_dim = feat_dim

@@ -15,7 +15,7 @@ class Dataset(torch.utils.data.Dataset):
     This is the main class that calculates the spectrogram and returns the
     spectrogram, audio pair.
     """
-    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, max_speakers=4, permute_spk=False, vec_type="ivec", feat_type="mfcc"):
+    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, max_speakers=4, permute_spk=True, vec_type="ivec", feat_type="mfcc"):
 
         self.vec_type = vec_type
         self.feat_type = feat_type

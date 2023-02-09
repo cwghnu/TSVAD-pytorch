@@ -95,13 +95,12 @@ class Xvector(torch.nn.Module):
         return x
 
 def test_model():
-    pretrain_model_path = ""
+    pretrain_model_path = "/export/home2/cwguang/code/ntu_diar/module/pretrain/x_vector/embedding_model.ckpt"
 
-    model = Xvector()
+    model = Xvector(in_channels=24)
 
-    checkpoint = torch.load(pretrain_model_path)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    pass
+    checkpoint = torch.load(pretrain_model_path, map_location="cpu")
+    model.load_state_dict(checkpoint)
 
 if __name__ == "__main__":
     test_model()

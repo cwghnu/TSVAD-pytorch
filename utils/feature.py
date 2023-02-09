@@ -5,12 +5,11 @@ import copy
 
 from torchaudio.compliance.kaldi import mfcc as kaldi_mfcc
 from torchaudio.compliance.kaldi import fbank as kaldi_fbank
-from kaldi.matrix import SubVector, SubMatrix
-from kaldi.feat.functions import compute_deltas, DeltaFeaturesOptions, SlidingWindowCmnOptions, sliding_window_cmn
 from pyannote.core import Annotation, Segment, Timeline
 
 def extract_mfcc(signal_data, sr, num_mel_bins=30, num_ceps=30, low_freq=20, high_freq=7600, cmn=True, delta=True):
-    
+    from kaldi.matrix import SubVector, SubMatrix
+    from kaldi.feat.functions import compute_deltas, DeltaFeaturesOptions, SlidingWindowCmnOptions, sliding_window_cmn
     mfcc_feat = kaldi_mfcc(torch.Tensor(signal_data)[None, :], sample_frequency=sr, frame_length=25, frame_shift=10, low_freq=low_freq, high_freq=high_freq, num_mel_bins=num_mel_bins, num_ceps=num_ceps, snip_edges=False)
     mfcc_feat = mfcc_feat.numpy()
 

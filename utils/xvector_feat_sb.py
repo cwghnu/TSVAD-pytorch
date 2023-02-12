@@ -29,9 +29,11 @@ from kaldi_data import KaldiData
 from feature import exclude_overlaping, index_aligned_labels
 
 def test_mfcc():
-    # wav_path = "/exhome1/weiguang/data/M2MET/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
-    wav_path = "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"
-    device = torch.device("cpu")
+    wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
+    # wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"  # 4 spks
+    # wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8008_M8015_MS808.wav"    # 3 spks
+    wav_path = "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/audio_dir/R8008_M8013_MS807.wav"    # 3 spks
+    device = torch.device("cuda:1")
     signal_data, sr = sf.read(wav_path)
     signal_data = signal_data[:, 0]
     signal_data = torch.from_numpy(signal_data[None, :]).float()
@@ -43,21 +45,20 @@ def test_mfcc():
 
     mfcc_feat = Fbank(n_mels=24)(signal_data)
     mfcc_feat = mfcc_feat.to(device)
-
     norm = InputNormalization(norm_type="sentence", std_norm=False)
     mfcc_feat = norm(mfcc_feat, torch.ones(1))
 
-    # pretrain_model_path = "/export/home2/cwguang/code/ntu_diar/module/pretrain/x_vector/embedding_model.ckpt"
-    pretrain_model_path = "/export/home2/cwguang/code/ntu_diar/module/finetune/x_vector_alimeeting/ckpt/CKPT+2023-02-06+10-09-54+00/embedding_model.ckpt"
+    pretrain_model_path = "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/speechbrain_xvector/embedding_model.ckpt"
     nnet = Xvector(in_channels=24)
     checkpoint = torch.load(pretrain_model_path, map_location="cpu")
     nnet.load_state_dict(checkpoint)
+    nnet.to(device)
     nnet.eval()
 
     start = 0
     end = mfcc_feat.shape[1]
-    kaldi_obj = KaldiData("/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far")
-    recid = "R8002_M8002_MS802"
+    kaldi_obj = KaldiData("/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far")
+    recid = "R8008_M8013_MS807"
     filtered_segments = kaldi_obj.segments[recid]
     frame_shift = 0.01 * sr
     rate = sr
@@ -73,10 +74,10 @@ def test_mfcc():
         ref_label[Segment(seg['st'], seg['et'])] = speaker_index
 
     ref_label_no_overlap = exclude_overlaping(ref_label)
-
+    min_seg_length = 0.3
     for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
         st, et = segment.start, segment.end
-        if et - st < 0.3:
+        if et - st < min_seg_length:
             continue
         speaker_index = label
         ref_label[Segment(st, et)] = speaker_index
@@ -107,6 +108,18 @@ def test_mfcc():
     clustering = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
     print("clustering label:", clustering.shape)
 
+    clf = NearestCentroid()
+    xvector_emb = xvector_emb.cpu().numpy()
+    clf.fit(xvector_emb, clustering)
+    index_aligned = index_aligned_labels(clustering, lebel_emb, n_classes=n_speaker)
+    assert len(np.unique(index_aligned)) == n_speaker
+    print(index_aligned)
+    centroids = clf.centroids_[list(index_aligned)]
+    
+    for i in range(n_speaker):
+        centroids[i, :] = np.mean(xvector_emb[lebel_emb==i], axis=0)
+    xvector_emb_centroids = np.concatenate((xvector_emb, centroids), axis=0)
+
     tsne = TSNE(
         perplexity=30,
         metric="cosine",    # euclidean
@@ -114,19 +127,18 @@ def test_mfcc():
         n_jobs=32,
         random_state=42,
     )
-    xvector_emb = xvector_emb.cpu().numpy()
-    xembeddings = tsne.fit(xvector_emb)
-    vis_x = xembeddings[:, 0]
-    vis_y = xembeddings[:, 1]
+    xembeddings = tsne.fit(xvector_emb_centroids)
+    vis_x = xembeddings[:-n_speaker, 0]
+    vis_y = xembeddings[:-n_speaker, 1]
     plt.scatter(vis_x, vis_y, c=lebel_emb, cmap=plt.cm.get_cmap("Set3", n_speaker), marker='.')
 
-    # vis_x = xembeddings[-n_speaker:, 0]
-    # vis_y = xembeddings[-n_speaker:, 1]
-    # plt.scatter(vis_x, vis_y, c=[0,1,2,3], cmap=plt.cm.get_cmap("Set1", n_speaker), marker='.')
+    vis_x = xembeddings[-n_speaker:, 0]
+    vis_y = xembeddings[-n_speaker:, 1]
+    plt.scatter(vis_x, vis_y, c=np.arange(n_speaker).tolist(), cmap=plt.cm.get_cmap("Set1", n_speaker), marker='.')
 
     plt.colorbar(ticks=range(n_speaker))
     plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector-finetune.png"), dpi=600)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector-pretrain-3spks-eval.png"), dpi=600)
     
 
 if __name__ == "__main__":

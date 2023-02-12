@@ -141,6 +141,16 @@ def extract_segments(wavs, segments=None):
             data, samplerate = load_wav(wavs[rec])
             yield rec, data
 
+def load_reco2spk(utt2spk):
+    reco2spk = dict()
+    for key, value in utt2spk.items():
+        reco_id = "_".join(key.split("_")[2:5])
+        if reco_id in reco2spk:
+            reco2spk[reco_id].add(value)
+        else:
+            reco2spk[reco_id] = {value}
+    return reco2spk
+
 
 class KaldiData:
     def __init__(self, data_dir):
@@ -155,6 +165,8 @@ class KaldiData:
                 os.path.join(self.data_dir, 'reco2dur'))
         self.spk2utt = load_spk2utt(
                 os.path.join(self.data_dir, 'spk2utt'))
+
+        self.reco2spk = load_reco2spk(self.utt2spk)
 
     def load_wav(self, recid, start=0, end=None):
         data, rate = load_wav(

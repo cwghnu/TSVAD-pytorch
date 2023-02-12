@@ -5,10 +5,11 @@
     "vec_processor_path": "/exhome1/weiguang/data/voxceleb/voxceleb_ivector_outputs_clean/vec_norm/vec_processor",
     "device": "cuda:1",
 
-    "mfcc_output_directory": "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/mfcc_ivec",
-    "ivec_output_directory": "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/ivec",
-    "label_output_directory": "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/label_ivec",
-    "path_dataset": "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far",
+    "mfcc_output_directory": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/mfcc_ivec",
+    "ivec_output_directory": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/ivec",
+    "label_output_directory": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/label_ivec",
+    "path_dataset": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far",
+    "logmel_output_directory": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/logmel",
 
     "mfcc_config": {
         "sampling_rate": 16000,
@@ -20,5 +21,13 @@
         "num_ceps": 24,
         "cmn": true,
         "delta": true
+    },
+    "logmel_config": {
+        "sampling_rate": 16000,
+        "frame_length": 25,
+        "frame_shift": 10,
+        "low_freq": 20,
+        "high_freq": 0.0,
+        "num_mel_bins": 80
     }
 }

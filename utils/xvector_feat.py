@@ -93,6 +93,8 @@ def test_mfcc():
 
     for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
         st, et = segment.start, segment.end
+        if et - st < 0.3 :
+            continue
         speaker_index = label
         ref_label[Segment(st, et)] = speaker_index
         start_frame = np.rint(
@@ -141,7 +143,7 @@ def test_mfcc():
 
     tsne = TSNE(
         perplexity=30,
-        metric="euclidean",    # euclidean
+        metric="cosine",    # euclidean
         # callbacks=ErrorLogger(),
         n_jobs=32,
         random_state=42,
@@ -158,42 +160,6 @@ def test_mfcc():
     plt.colorbar(ticks=range(n_speaker))
     plt.clim(-0.5, n_speaker-0.5)
     plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector.png"), dpi=600)
-
-    # acc_1 = accuracy_score(lebel_emb, clustering)
-    # acc_2 = accuracy_score(1-lebel_emb, clustering)
-    # print("Accuracy: {}, {}".format(acc_1, acc_2))
-
-    # plt.figure()
-    # time_tick = np.arange(len(lebel_emb))
-    # plt.subplot(2,1,1)
-    # plt.plot(time_tick, lebel_emb, linewidth=2.0)
-    # plt.subplot(2,1,2)
-    # plt.plot(time_tick, clustering, linewidth=2.0)
-    # plt.savefig(os.path.join(os.path.dirname(__file__), "diar_clustering_xvec.png"), dpi=600)
-
-    idx = 0
-    for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
-        st, et = segment.start, segment.end
-        hyp_label[Segment(st, et)] = clustering[idx]
-        idx += 1
-
-
-    # for idx, seg in enumerate(filtered_segments):
-    #     speaker_index = speakers.index(kaldi_obj.utt2spk[seg['utt']])
-    #     hyp_label[Segment(seg['st'], seg['et'])] = clustering[idx]
-
-    diarizationErrorRate = DiarizationErrorRate(skip_overlap=False, collar=0.25)
-    diar_info = diarizationErrorRate(ref_label_no_overlap, hyp_label, detailed=True, uem=Segment(0, utt_len))
-    print(diar_info)
-    return diar_info['diarization error rate']
-
-    # total_frames = clustering.shape[0] * sub_sampling
-    # time_tick = librosa.frames_to_time(np.arange(total_frames), sr=sr, n_fft=0.025*sr, hop_length=0.01*sr)
-    # predicted_label = np.repeat(clustering, sub_sampling)
-
-    # plt.figure()
-    # plt.plot(time_tick, predicted_label, linewidth=2.0)
-    # plt.savefig(os.path.join(os.path.dirname(__file__), "diar_clustering.png"), dpi=600)
     
 
 def test_ivector_plda_ahc_with_clean_data():

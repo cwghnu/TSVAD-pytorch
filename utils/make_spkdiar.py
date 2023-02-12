@@ -131,8 +131,8 @@ def make_spkdiar(list_path, wav_path, output_path, bin_wav):
     print('write vad segments')
     write_segm_fmt(rttm, output_path)
 
-    print('write reco2dur')
-    write_reco2dur(df_wav, output_path)
+    # print('write reco2dur')
+    # write_reco2dur(df_wav, output_path)
 
 if __name__ == "__main__":
 

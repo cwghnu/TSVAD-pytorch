@@ -31,7 +31,7 @@
     },
     "infer_config": {
         "model_type": "TSVAD",
-        "model_path": "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/tsvad_ivec_logmel_7/02-08_15-22_30",
+        "model_path": "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/tsvad_ivec_logmel_7/02-09_09-08_50",
         "output_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs",
         "hyp_rttm_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm",
         "ref_rttm_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/rttm_groundtruth",

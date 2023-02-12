@@ -20,7 +20,8 @@ def inference(infer_config, model_config):
     model_type = infer_config.get('model_type', 'tsvad')
     model_path = infer_config.get('model_path', '')
     output_dir = infer_config.get('output_dir', '')
-    nframes              = infer_config.get('nframes', 40)
+    nframes    = infer_config.get('nframes', 40)
+    chunk_step = infer_config.get('chunk_step', 20)
     max_speakers    = infer_config.get('max_speakers', 4)
     hyp_rttm_dir = infer_config.get('hyp_rttm_dir', '')
     ref_rttm_dir = infer_config.get('ref_rttm_dir', '')
@@ -49,6 +50,7 @@ def inference(infer_config, model_config):
         infer_config['eval_dir'], 
         mfcc_config, 
         chunk_size=nframes, 
+        chunk_step=chunk_step,
         permute_spk=False,
         vec_type=infer_config['vec_type'], 
         feat_type=infer_config['feat_type']
@@ -80,9 +82,13 @@ def inference(infer_config, model_config):
 
         num_frames, num_speakers = label_utt.shape
         vec_dim = vec_utt.shape[-1]
+
         if num_speakers < max_speakers:
-            label_utt = np.concatenate((label_utt, np.zeros((num_frames, max_speakers - num_speakers))), axis=-1)
-            vec_utt = np.concatenate((vec_utt, np.zeros((max_speakers - num_speakers, vec_dim))), axis=0)
+            # label_utt = np.concatenate((label_utt, np.zeros((num_frames, max_speakers - num_speakers))), axis=-1)
+            # vec_utt = np.concatenate((vec_utt, np.zeros((max_speakers - num_speakers, vec_dim))), axis=0)
+
+            label_utt = np.concatenate((label_utt, label_utt[:, :max_speakers - num_speakers]), axis=-1)
+            vec_utt = np.concatenate((vec_utt, vec_utt[:max_speakers - num_speakers]), axis=0)
 
         out_chunks = []
 
@@ -124,7 +130,7 @@ if __name__ == "__main__":
     import json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='config/tsvad_config.json',
+    parser.add_argument('-c', '--config', type=str, default='config/tsvad_config_xvec.json',
                         help='JSON file for configuration')
     parser.add_argument('-g', '--gpu', type=str, default='1',
                         help='Using gpu #')

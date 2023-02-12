@@ -44,7 +44,7 @@ class BLSTMP(nn.Module):
      
 
 class Model(nn.Module):
-    def __init__(self, feat_dim=80, vec_dim=400, out_channels=[64, 64, 128, 128], rproj=128, nproj=160, cell=896):
+    def __init__(self, feat_dim=80, vec_dim=512, out_channels=[64, 64, 128, 128], rproj=256, nproj=256, cell=896):
         super(Model, self).__init__()
 
         self.feat_dim = feat_dim
@@ -114,7 +114,7 @@ class Model(nn.Module):
         return preds
 
 if __name__ == "__main__":
-    model = Model()
+    model = Model(feat_dim=24)
 
     data_len = 30*60
     sampling_rate = 16000
@@ -125,9 +125,9 @@ if __name__ == "__main__":
 
     for i in range(num_repeats):
         batch = {
-            "feat": torch.rand((1, num_frames, 80)),
+            "feat": torch.rand((1, num_frames, 24)),
             "label": torch.rand((1, num_frames, 4)),
-            "spk_vector": torch.rand((1, 4, 400)),
+            "spk_vector": torch.rand((1, 4, 512)),
         }
         
         time_st = time.time()

@@ -64,7 +64,8 @@ class Trainer(object):
 
         # input = [x.to(self.device) for x in input]
         for key in input.keys():
-            input[key] = input[key].to(self.device)
+            if key != "index_spks":
+                input[key] = input[key].to(self.device)
 
         preds = torch.nn.parallel.data_parallel(
             self.model,
@@ -73,7 +74,12 @@ class Trainer(object):
             self.gpus[0],
         )
         bs, tframe = input["label"].shape[0:2]
-        loss = torch.nn.BCELoss(reduction='sum')(preds, input["label"]) / tframe / bs
+        loss_batches = []
+        for idx, idx_batch in enumerate(input["index_spks"]):
+            # print(idx, idx_batch)
+            loss_batches.append(torch.nn.BCELoss(reduction='sum')(preds[idx, :, idx_batch], input["label"][idx, :, idx_batch]) / tframe) 
+        loss = torch.stack(loss_batches).mean()
+        # loss = torch.nn.BCELoss(reduction='sum')(preds, input["label"]) / tframe / bs
         loss_detail = {"diarization loss": loss.item()}
         
         # loss, loss_detail = self.model(input)

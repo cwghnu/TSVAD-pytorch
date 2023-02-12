@@ -48,6 +48,8 @@ def main(args):
     for i in range(len(segments)):
         fmt = "SPEAKER {:s} 1 {:.2f} {:.2f} <NA> <NA> {:s} <NA> <NA>"
         #pdb.set_trace()
+        # for training textgrid
+        segments[i].spkr = "_".join(segments[i].spkr.split("_")[-2:])
         rttm_file.write(f"{fmt.format(segments[i].uttid, float(segments[i].stime), float(segments[i].etime) - float(segments[i].stime), str(segments[i].spkr))}\n")
 
 if __name__ == '__main__':

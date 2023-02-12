@@ -46,7 +46,7 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
                             session,
                             s * frame_shift * subsampling / sampling_rate,
                             dur,
-                            session + "_" + str(spkid)), file=wf)
+                            str(spkid)), file=wf)
 
         rttm_content = read_rttm(rttm_full_path)
         annot = rttm2annotation(rttm_content)

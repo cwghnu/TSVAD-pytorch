@@ -19,6 +19,7 @@ def collate_fn(batches):
     feat_batches = [item['feat'] for item in batches]
     label_batches = [item['label'] for item in batches]
     vector_batches = [item['spk_vector'] for item in batches]
+    index_batches = [item['index_spks'] for item in batches]
     
     feat_batches = torch.stack(feat_batches)
     label_batches = torch.stack(label_batches)
@@ -28,6 +29,7 @@ def collate_fn(batches):
         'feat': feat_batches,
         'label': label_batches,
         "spk_vector": vector_batches,
+        "index_spks": index_batches,
     }
     
     return egs
@@ -39,6 +41,7 @@ def train(train_config):
     max_epoch             = train_config.get('max_epoch', 100000)
     batch_size           = train_config.get('batch_size', 128)
     nframes              = train_config.get('nframes', 40)
+    chunk_step           = train_config.get('chunk_step', 20)
     iters_per_checkpoint = train_config.get('iters_per_checkpoint', 10000)
     iters_per_log        = train_config.get('iters_per_log', 1000)
     seed                 = train_config.get('seed', 1234)
@@ -73,6 +76,7 @@ def train(train_config):
         train_config['training_dir'], 
         mfcc_config, 
         chunk_size=nframes,
+        chunk_step=chunk_step,
         vec_type=train_config['vec_type'], 
         feat_type=train_config['feat_type']
     )    
@@ -91,6 +95,7 @@ def train(train_config):
         train_config['eval_dir'], 
         mfcc_config, 
         chunk_size=nframes,
+        chunk_step=chunk_step,
         vec_type=train_config['vec_type'], 
         feat_type=train_config['feat_type']
     )    
@@ -169,11 +174,16 @@ def train(train_config):
             for i, batch in enumerate(eval_loader):
                 with torch.no_grad():
                     for key in batch.keys():
-                        batch[key] = batch[key].to("cuda:1")
+                        if key != "index_spks":
+                            batch[key] = batch[key].to("cuda:1")
                     preds = trainer.model(batch)
                     targets = batch["label"]
                     bs, num_frames = targets.shape[0:2]
-                    loss = nn.BCELoss(reduction='sum')(preds, targets) / num_frames / bs
+                    loss_batches = []
+                    for idx, idx_batch in enumerate(batch["index_spks"]):
+                        loss_batches.append(torch.nn.BCELoss(reduction='sum')(preds[idx, :, idx_batch], batch["label"][idx, :, idx_batch]) / num_frames)
+                    loss = torch.stack(loss_batches).mean()
+                    # loss = nn.BCELoss(reduction='sum')(preds, targets) / num_frames / bs
                     eval_loss.append(loss.item())
             mseg = 'Epoch {}:'.format( epoch)
             mseg += "Eval loss: {}".format(np.mean(eval_loss))
@@ -194,8 +204,12 @@ if __name__ == "__main__":
     import argparse
     import json
 
+    import psutil
+    process = psutil.Process(os.getpid())
+    process.nice(psutil.IOPRIO_CLASS_RT)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='config/tsvad_config.json',
+    parser.add_argument('-c', '--config', type=str, default='config/tsvad_config_xvec.json',
                         help='JSON file for configuration')
 
     parser.add_argument('-g', '--gpu', type=str, default='0,1',
@@ -215,6 +229,6 @@ if __name__ == "__main__":
 
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = False
-    torch.multiprocessing.set_start_method('spawn')
+    # torch.multiprocessing.set_start_method('spawn')
 
     train(train_config)

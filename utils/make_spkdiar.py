@@ -141,9 +141,9 @@ if __name__ == "__main__":
         fromfile_prefix_chars='@',
         description='Make JSALT19 datasets for spk diarization')
 
-    parser.add_argument('--list-path', dest='list_path', default="/exhome1/weiguang/data/Alimeeting/Train_Ali_far", required=False)
-    parser.add_argument('--wav-path', dest='wav_path', default="/exhome1/weiguang/data/Alimeeting/Train_Ali_far/audio_dir", required=False)
-    parser.add_argument('--output-path', dest='output_path', default="/exhome1/weiguang/data/Alimeeting/Train_Ali_far",  required=False)
+    parser.add_argument('--list-path', dest='list_path', default="/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far", required=False)
+    parser.add_argument('--wav-path', dest='wav_path', default="/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir", required=False)
+    parser.add_argument('--output-path', dest='output_path', default="/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far",  required=False)
     parser.add_argument('--bin-wav', dest='bin_wav', default=False, action='store_true')
     args=parser.parse_args()
     

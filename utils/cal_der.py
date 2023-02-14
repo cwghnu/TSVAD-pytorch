@@ -27,6 +27,9 @@ def cal_der(pre_rttm_dir, ref_rttm_dir):
         if hyp_rttm_name.endswith('.rttm'):
             rec_id = hyp_rttm_name.split('.rttm')[0]
 
+            if not os.path.exists(os.path.join(ref_rttm_dir, rec_id+'.rttm')):
+                continue
+
             ref_rttm_content = load_rttm(os.path.join(ref_rttm_dir, rec_id+'.rttm'))
             hyp_rttm_content = load_rttm(os.path.join(pre_rttm_dir, rec_id+'.rttm'))
 

@@ -1,0 +1,15 @@
+## Data preparation
+Please refer to utils/prepare_rttm.sh to generate rttm files.
+Please refer to utils/extracto_utt_xvector_sb.py to extract x-vectors and labels for each session.
+
+## Training
+python train.py
+
+Please modify the json file accordingly.
+
+## Inference
+
+# Need to improve
+python cluster-init/cluster_xvector_vad_osd.py
+
+python inference.py

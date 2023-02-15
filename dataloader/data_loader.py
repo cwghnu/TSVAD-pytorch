@@ -26,15 +26,22 @@ class Dataset(torch.utils.data.Dataset):
     This is the main class that calculates the spectrogram and returns the
     spectrogram, audio pair.
     """
-    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, chunk_step=1000, max_speakers=4, permute_spk=True, vec_type="ivec", feat_type="mfcc"):
+    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, chunk_step=1000, max_speakers=4, permute_spk=True, vec_type="ivec", feat_type="mfcc", vec_dir="", feat_dir=""):
 
         self.vec_type = vec_type
         self.feat_type = feat_type
+        self.vec_dir = vec_dir
+        self.feat_dir = feat_dir
+
         if self.feat_type == "mfcc":
             self.feat_type = self.feat_type + "_" + self.vec_type
         self.kaldi_obj = KaldiData(path_dataset)
-        self.feat_dir = os.path.join(path_dataset, self.feat_type)
-        self.vec_dir = os.path.join(path_dataset, self.vec_type)
+
+        if self.feat_dir == "":
+            self.feat_dir = os.path.join(path_dataset, self.feat_type)
+        if self.vec_dir == "":
+            self.vec_dir = os.path.join(path_dataset, self.vec_type)
+
         self.label_dir = os.path.join(path_dataset, "label" + "_" + self.vec_type)
         
         self.rate = mfcc_config["sampling_rate"]

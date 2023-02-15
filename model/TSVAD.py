@@ -114,7 +114,7 @@ class Model(nn.Module):
         return preds
 
 if __name__ == "__main__":
-    model = Model(feat_dim=24)
+    model = Model(feat_dim=24, rproj=256, nproj=256, cell=1024)
 
     data_len = 30*60
     sampling_rate = 16000

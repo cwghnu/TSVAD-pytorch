@@ -14,6 +14,7 @@ from dataloader.data_loader import Dataset
 
 from utils.make_rttm import make_rttm
 from utils.cal_der import cal_der
+from utils.extract_xvector_by_probs import extract_xvec_with_tsvad
 
 def inference(infer_config, model_config):
     # Initial
@@ -28,6 +29,9 @@ def inference(infer_config, model_config):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    if not os.path.exists(infer_config['output_xvector_dir']):
+        os.makedirs(infer_config['output_xvector_dir'])
 
     # Load Model
     module = import_module('model.{}'.format(model_type))
@@ -53,7 +57,9 @@ def inference(infer_config, model_config):
         chunk_step=chunk_step,
         permute_spk=False,
         vec_type=infer_config['vec_type'], 
-        feat_type=infer_config['feat_type']
+        feat_type=infer_config['feat_type'],
+        vec_dir=infer_config['vec_dir'], 
+        feat_dir=infer_config['feat_dir']
     )
 
     # Prepare logger
@@ -124,6 +130,10 @@ def inference(infer_config, model_config):
 
     make_rttm(output_dir, hyp_rttm_dir)
     cal_der(hyp_rttm_dir, ref_rttm_dir)
+
+    if not os.path.exists(infer_config['output_xvector_dir']):
+        os.makedirs(infer_config['output_xvector_dir'])
+    extract_xvec_with_tsvad(output_dir, infer_config['vec_dir'], infer_config['output_xvector_dir'], evalset.feat_dir)
                 
 if __name__ == "__main__":
     import argparse

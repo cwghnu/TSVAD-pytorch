@@ -13,7 +13,7 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
     # hyp_rttm_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
 
     threshold = 0.4
-    median = 7
+    median = 51
     sampling_rate = 16000
     frame_shift = sampling_rate * 0.01
     subsampling = 1

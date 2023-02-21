@@ -26,12 +26,14 @@ class Dataset(torch.utils.data.Dataset):
     This is the main class that calculates the spectrogram and returns the
     spectrogram, audio pair.
     """
-    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, chunk_step=1000, max_speakers=4, permute_spk=True, vec_type="ivec", feat_type="mfcc", vec_dir="", feat_dir=""):
+    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, chunk_step=1000, max_speakers=4, use_mix_up=True, alpha=0.5, permute_spk=True, vec_type="ivec", feat_type="mfcc", vec_dir="", feat_dir=""):
 
         self.vec_type = vec_type
         self.feat_type = feat_type
         self.vec_dir = vec_dir
         self.feat_dir = feat_dir
+        self.use_mix_up = use_mix_up
+        self.alpha = alpha
 
         if self.feat_type == "mfcc":
             self.feat_type = self.feat_type + "_" + self.vec_type
@@ -107,8 +109,19 @@ class Dataset(torch.utils.data.Dataset):
 
         # print(utt_id, idx_start, idx_end)
         
-        feat_utt = feat_utt[idx_start:idx_end]      # [num_frames, 72]
-        label_utt = label_utt[idx_start:idx_end]    # [num_frames, num_speakers]
+        if self.use_mix_up:
+            max_start  = len(feat_utt) - self.chunk_size
+            idx_start_to_mix = random.randint(0, max_start)
+            idx_end_to_mix = idx_start_to_mix + self.chunk_size
+            
+            lam = np.random.beta(self.alpha, self.alpha)
+            # print("lam: {}".format(lam))
+            
+            feat_utt = lam * feat_utt[idx_start:idx_end] + (1-lam) * feat_utt[idx_start_to_mix:idx_end_to_mix]
+            label_utt = lam * label_utt[idx_start:idx_end] + (1-lam) * label_utt[idx_start_to_mix:idx_end_to_mix]
+        else:
+            feat_utt = feat_utt[idx_start:idx_end]      # [num_frames, 72]
+            label_utt = label_utt[idx_start:idx_end]    # [num_frames, num_speakers]
 
         num_frames, num_speakers = label_utt.shape
         ivec_dim = vec_utt.shape[-1]
@@ -178,8 +191,8 @@ def test_dataset():
     chunk_step = infer_config.get('chunk_step', 20)
 
     evalset = Dataset(
-        # infer_config['eval_dir'],
-        train_config['training_dir'],
+        infer_config['eval_dir'],
+        # train_config['training_dir'],
         mfcc_config, 
         chunk_size=nframes, 
         chunk_step=chunk_step,
@@ -188,8 +201,8 @@ def test_dataset():
         feat_type=infer_config['feat_type']
     )
 
-    # for i in range(evalset.total_chunk):
-    #     evalset.__getitem__(i)
+    for i in range(evalset.total_chunk):
+        evalset.__getitem__(i)
 
 if __name__ == "__main__":
     test_dataset()

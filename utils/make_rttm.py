@@ -12,7 +12,7 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
     # hyp_probs_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs"
     # hyp_rttm_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
 
-    threshold = 0.4
+    threshold = 0.5
     median = 51
     sampling_rate = 16000
     frame_shift = sampling_rate * 0.01
@@ -54,7 +54,7 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
 
         filtered_annot = Annotation()
         for segment, track, label in annot.itertracks(yield_label=True):
-            if segment.end - segment.start > 0.2:
+            if segment.end - segment.start > 0.1:
                 filtered_annot[Segment(segment.start, segment.end)] = label
         with open(rttm_full_path, 'w') as wf:
             filtered_annot.write_rttm(wf)

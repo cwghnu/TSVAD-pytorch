@@ -97,7 +97,8 @@ def train(train_config):
         chunk_size=nframes,
         chunk_step=chunk_step,
         vec_type=train_config['vec_type'], 
-        feat_type=train_config['feat_type']
+        feat_type=train_config['feat_type'],
+        use_mix_up=False
     )    
     eval_loader = DataLoader(
         evalset, 
@@ -106,7 +107,7 @@ def train(train_config):
         batch_size=batch_size,
         pin_memory=True,
         drop_last=True,
-        collate_fn=collate_fn
+        collate_fn=collate_fn,
     )
 
     # Get shared output_directory ready
@@ -204,9 +205,9 @@ if __name__ == "__main__":
     import argparse
     import json
 
-    import psutil
-    process = psutil.Process(os.getpid())
-    process.nice(psutil.IOPRIO_CLASS_RT)
+    # import psutil
+    # process = psutil.Process(os.getpid())
+    # process.nice(psutil.IOPRIO_CLASS_RT)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', type=str, default='config/tsvad_config_xvec.json',

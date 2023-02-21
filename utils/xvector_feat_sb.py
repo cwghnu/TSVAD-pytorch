@@ -33,7 +33,7 @@ def test_mfcc():
     # wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"  # 4 spks
     # wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8008_M8015_MS808.wav"    # 3 spks
     wav_path = "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/audio_dir/R8008_M8013_MS807.wav"    # 3 spks
-    device = torch.device("cuda:1")
+    device = torch.device("cpu")
     signal_data, sr = sf.read(wav_path)
     signal_data = signal_data[:, 0]
     signal_data = torch.from_numpy(signal_data[None, :]).float()
@@ -75,6 +75,8 @@ def test_mfcc():
 
     ref_label_no_overlap = exclude_overlaping(ref_label)
     min_seg_length = 0.3
+    mfcc_spks = [torch.zeros((0,24)).to(device) for i in range(n_speaker)]
+
     for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
         st, et = segment.start, segment.end
         if et - st < min_seg_length:
@@ -95,29 +97,26 @@ def test_mfcc():
             lebel_emb.append(speaker_index)
             with torch.no_grad():
                 xvector_emb.append(nnet(mfcc_feat[:, rel_start:rel_end, :])[0, ...])
+                mfcc_spks[speaker_index] = torch.cat((mfcc_spks[speaker_index], mfcc_feat[0, rel_start:rel_end, :]), dim=0)
     xvector_emb = torch.cat(xvector_emb, dim=0)
     lebel_emb = np.array(lebel_emb)
+    xvector_emb = xvector_emb.cpu().numpy()
 
     print("lebel_emb", np.unique(lebel_emb))
-    
-    score_matrix = pairwise_cosine_similarity(xvector_emb, xvector_emb)
-    score_matrix = score_matrix.detach().cpu().numpy()
-    score_matrix = score_matrix - np.min(score_matrix)
-    score_matrix = score_matrix / np.max(score_matrix)
-    # # clustering = AgglomerativeClustering(affinity="precomputed", linkage='single').fit_predict(score_matrix)
-    clustering = SpectralClustering(affinity="precomputed", random_state=777, n_clusters=n_speaker).fit_predict(score_matrix)
-    print("clustering label:", clustering.shape)
 
-    clf = NearestCentroid()
-    xvector_emb = xvector_emb.cpu().numpy()
-    clf.fit(xvector_emb, clustering)
-    index_aligned = index_aligned_labels(clustering, lebel_emb, n_classes=n_speaker)
-    assert len(np.unique(index_aligned)) == n_speaker
-    print(index_aligned)
-    centroids = clf.centroids_[list(index_aligned)]
+    centroids = np.zeros((n_speaker, xvector_emb.shape[-1]))
     
-    for i in range(n_speaker):
-        centroids[i, :] = np.mean(xvector_emb[lebel_emb==i], axis=0)
+    # for i in range(n_speaker):
+    #     centroids[i, :] = np.mean(xvector_emb[lebel_emb==i], axis=0)
+
+    xvector_spks = []
+    for mfcc_spk in mfcc_spks:
+        with torch.no_grad():
+            xvector_spk = nnet(mfcc_spk[None, ...])[0, ...]
+            xvector_spks.append(xvector_spk)
+    xvector_spks = torch.cat(xvector_spks, dim=0)
+    centroids = xvector_spks.cpu().numpy()
+
     xvector_emb_centroids = np.concatenate((xvector_emb, centroids), axis=0)
 
     tsne = TSNE(
@@ -138,7 +137,7 @@ def test_mfcc():
 
     plt.colorbar(ticks=range(n_speaker))
     plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector-pretrain-3spks-eval.png"), dpi=600)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector-pretrain-3spks-eval-norm.png"), dpi=600)
     
 
 if __name__ == "__main__":

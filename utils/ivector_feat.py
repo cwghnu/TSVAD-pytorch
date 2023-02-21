@@ -207,6 +207,8 @@ def test_mfcc():
 
     for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):
         st, et = segment.start, segment.end
+        if et - st < 1.0:
+            continue
         speaker_index = label
         start_frame = np.rint(
                 st * rate / frame_shift).astype(int)
@@ -298,7 +300,7 @@ def test_mfcc():
     plt.scatter(vis_x, vis_y, c=[0,1,2,3], cmap=plt.cm.get_cmap("Set1", n_speaker), marker='.')
     plt.colorbar(ticks=range(n_speaker))
     plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-ivector-4spk-nonorm.png"), dpi=600)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-ivector-4spk-nonorm-filtered.png"), dpi=600)
 
     # idx = 0
     # for segment, track, label in ref_label_no_overlap.itertracks(yield_label=True):

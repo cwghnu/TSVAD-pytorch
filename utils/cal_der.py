@@ -35,7 +35,7 @@ def cal_der(pre_rttm_dir, ref_rttm_dir):
 
             ref_num_spkrs = get_oracle_num_spkrs_from_uttrttm(ref_rttm_content)
 
-            der_result = DER(ref_rttm_content, hyp_rttm_content, collar=0.25)
+            der_result = DER(ref_rttm_content, hyp_rttm_content, collar=0.00)
 
             list_result_dict.append(der_result)
             num_spkrs_list.append(ref_num_spkrs)

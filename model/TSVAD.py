@@ -66,12 +66,12 @@ class Model(nn.Module):
 
         # self.linear_speech = nn.Linear(int(out_channels[-1]*self.feat_dim//2), vec_dim)
         
-        self.linear_cat = nn.Linear(int(out_channels[-1]*self.feat_dim//2 + vec_dim), 3*rproj)
+        self.linear_cat = nn.Linear(int(out_channels[-1]*self.feat_dim//2 + vec_dim), rproj)
 
         # self.rnn_speaker_detection = BLSTMP(3*rproj, cell, num_layers=2)
         # self.rnn_combine = BLSTMP(8*nproj, cell)
 
-        self.rnn_speaker_detection = nn.LSTM(3*rproj, cell, bidirectional=True, batch_first=True, proj_size=nproj, num_layers=2)
+        self.rnn_speaker_detection = nn.LSTM(rproj, cell, bidirectional=True, batch_first=True, proj_size=nproj, num_layers=2)
         self.rnn_combine = nn.LSTM(8*nproj, cell, bidirectional=True, batch_first=True, proj_size=nproj, num_layers=1)
 
         self.output_layer = nn.Linear(nproj*2, 4)
@@ -114,7 +114,7 @@ class Model(nn.Module):
         return preds
 
 if __name__ == "__main__":
-    model = Model(feat_dim=24, rproj=256, nproj=256, cell=1024)
+    model = Model(feat_dim=24, rproj=512, nproj=256, cell=1024)
 
     data_len = 30*60
     sampling_rate = 16000

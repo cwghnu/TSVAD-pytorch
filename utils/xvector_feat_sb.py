@@ -29,14 +29,20 @@ from kaldi_data import KaldiData
 from feature import exclude_overlaping, index_aligned_labels
 
 def test_mfcc():
-    wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
-    # wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"  # 4 spks
-    # wav_path = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir/R8008_M8015_MS808.wav"    # 3 spks
-    wav_path = "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/audio_dir/R8008_M8013_MS807.wav"    # 3 spks
+    data_dir = "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far"
+
+    wav_path = "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/audio_dir/R8009_M8026_MS812.wav"  # 2 speaker
+    # wav_path = "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/audio_dir/R8002_M8002_MS802.wav"  # 4 spks
+    wav_path = "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/audio_dir/R8008_M8015_MS808.wav"    # 3 spks
+    # wav_path = "/export/home2/cwguang/datasets/Eval_Ali/Eval_Ali_far/audio_dir/R8008_M8013_MS807.wav"    # 3 spks
     device = torch.device("cpu")
     signal_data, sr = sf.read(wav_path)
-    signal_data = signal_data[:, 0]
-    signal_data = torch.from_numpy(signal_data[None, :]).float()
+
+    # signal_data = signal_data[:, 0]
+    # signal_data = torch.from_numpy(signal_data[None, :]).float()
+
+    signal_data = torch.from_numpy(signal_data).float() 
+    signal_data = signal_data.permute(1,0).contiguous() # [num_channels, num_samples]
 
     utt_len = len(signal_data) / sr
 
@@ -46,9 +52,9 @@ def test_mfcc():
     mfcc_feat = Fbank(n_mels=24)(signal_data)
     mfcc_feat = mfcc_feat.to(device)
     norm = InputNormalization(norm_type="sentence", std_norm=False)
-    mfcc_feat = norm(mfcc_feat, torch.ones(1))
+    mfcc_feat = norm(mfcc_feat, torch.ones(mfcc_feat.shape[0]))
 
-    pretrain_model_path = "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/speechbrain_xvector/embedding_model.ckpt"
+    pretrain_model_path = "/export/home2/cwguang/code/TSVAD-pytorch/checkpoints/speechbrain_xvector/embedding_model.ckpt"
     nnet = Xvector(in_channels=24)
     checkpoint = torch.load(pretrain_model_path, map_location="cpu")
     nnet.load_state_dict(checkpoint)
@@ -57,8 +63,8 @@ def test_mfcc():
 
     start = 0
     end = mfcc_feat.shape[1]
-    kaldi_obj = KaldiData("/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far")
-    recid = "R8008_M8013_MS807"
+    kaldi_obj = KaldiData(data_dir)
+    recid = "R8008_M8015_MS808"
     filtered_segments = kaldi_obj.segments[recid]
     frame_shift = 0.01 * sr
     rate = sr
@@ -96,7 +102,10 @@ def test_mfcc():
             T[rel_start:rel_end, speaker_index] = 1
             lebel_emb.append(speaker_index)
             with torch.no_grad():
-                xvector_emb.append(nnet(mfcc_feat[:, rel_start:rel_end, :])[0, ...])
+                xvector_seg = nnet(mfcc_feat[:, rel_start:rel_end, :])
+                xvector_seg = torch.mean(xvector_seg, dim=0)
+                # xvector_seg = xvector_seg[0]
+                xvector_emb.append(xvector_seg)
                 mfcc_spks[speaker_index] = torch.cat((mfcc_spks[speaker_index], mfcc_feat[0, rel_start:rel_end, :]), dim=0)
     xvector_emb = torch.cat(xvector_emb, dim=0)
     lebel_emb = np.array(lebel_emb)
@@ -137,7 +146,7 @@ def test_mfcc():
 
     plt.colorbar(ticks=range(n_speaker))
     plt.clim(-0.5, n_speaker-0.5)
-    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector-pretrain-3spks-eval-norm.png"), dpi=600)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "tsne-xvector-pretrain-3spks-test.png"), dpi=600)
     
 
 if __name__ == "__main__":

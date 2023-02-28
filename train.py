@@ -12,8 +12,10 @@ import json
 import torch.nn as nn
 
 from torch.utils.data import DataLoader
+from itertools import permutations, combinations
 
 from dataloader.data_loader import Dataset
+from utils.loss import spk_emb_loss
 
 def collate_fn(batches):
     feat_batches = [item['feat'] for item in batches]
@@ -78,7 +80,8 @@ def train(train_config):
         chunk_size=nframes,
         chunk_step=chunk_step,
         vec_type=train_config['vec_type'], 
-        feat_type=train_config['feat_type']
+        feat_type=train_config['feat_type'],
+        # use_mix_up=False,
     )    
     train_loader = DataLoader(
         trainset, 
@@ -98,7 +101,8 @@ def train(train_config):
         chunk_step=chunk_step,
         vec_type=train_config['vec_type'], 
         feat_type=train_config['feat_type'],
-        use_mix_up=False
+        use_mix_up=False,
+        random_channel=False
     )    
     eval_loader = DataLoader(
         evalset, 
@@ -177,12 +181,23 @@ def train(train_config):
                     for key in batch.keys():
                         if key != "index_spks":
                             batch[key] = batch[key].to("cuda:1")
-                    preds = trainer.model(batch)
+                    preds, spk_emb = trainer.model(batch)
+                    # if isinstance(results, set):
+                    #     preds, spk_emb = results[0], results[1]
+                    # else:
+                    #     preds = results
+                    #     spk_emb = None
                     targets = batch["label"]
                     bs, num_frames = targets.shape[0:2]
                     loss_batches = []
                     for idx, idx_batch in enumerate(batch["index_spks"]):
-                        loss_batches.append(torch.nn.BCELoss(reduction='sum')(preds[idx, :, idx_batch], batch["label"][idx, :, idx_batch]) / num_frames)
+                        # loss_batches.append(torch.nn.BCELoss(reduction='sum')(preds[idx, :, idx_batch], batch["label"][idx, :, idx_batch]) / num_frames)
+                        loss_diar = torch.nn.BCEWithLogitsLoss(reduction='sum')(preds[idx, :, idx_batch], batch["label"][idx, :, idx_batch]) / num_frames
+                        if spk_emb is not None:
+                            # loss_spk = spk_emb_loss(spk_emb[idx, idx_batch, :])
+                            loss_batches.append(loss_diar)
+                        else:
+                            loss_batches.append(loss_diar)
                     loss = torch.stack(loss_batches).mean()
                     # loss = nn.BCELoss(reduction='sum')(preds, targets) / num_frames / bs
                     eval_loss.append(loss.item())
@@ -213,7 +228,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', type=str, default='config/tsvad_config_xvec.json',
                         help='JSON file for configuration')
 
-    parser.add_argument('-g', '--gpu', type=str, default='0,1',
+    parser.add_argument('-g', '--gpu', type=str, default='1,2',
                         help='Using gpu #')
     args = parser.parse_args()
 

@@ -4,6 +4,8 @@ import numpy as np
 import torch.nn as nn
 import time
 from fvcore.nn import FlopCountAnalysis, parameter_count_table, flop_count_table
+import psutil
+import os
 
 class CNN_ReLU_BatchNorm(nn.Module):
     def __init__(self, in_channels=1, out_channels=64, kernel_size=3, stride=(1, 1), padding=1):
@@ -105,7 +107,7 @@ class Model(nn.Module):
         # preds   = nn.Sigmoid()(preds)
 
         preds   = self.output_layer(outputs)
-        preds   = nn.Sigmoid()(preds)
+        # preds   = nn.Sigmoid()(preds)
 
         
         # loss = nn.BCELoss(reduction='sum')(preds, targets) / tframe / bs
@@ -115,30 +117,38 @@ class Model(nn.Module):
 
 if __name__ == "__main__":
     model = Model(feat_dim=24, rproj=512, nproj=256, cell=1024)
+    model.eval()
 
-    data_len = 30*60
     sampling_rate = 16000
-    num_repeats = 1
+    data_len = 30*60 * sampling_rate
+    num_repeats = 2
     num_frames = int(data_len // (0.01 * sampling_rate))
+    chunk_frames = 800
 
     time_list = []
 
     for i in range(num_repeats):
-        batch = {
-            "feat": torch.rand((1, num_frames, 24)),
-            "label": torch.rand((1, num_frames, 4)),
-            "spk_vector": torch.rand((1, 4, 512)),
-        }
+        time_total = 0
+        for idx_start in range(0, num_frames, 600):
+            batch = {
+                "feat": torch.rand((1, chunk_frames, 24)),
+                "label": torch.rand((1, chunk_frames, 4)),
+                "spk_vector": torch.rand((1, 4, 512)),
+            }
+            time_st = time.time()
+            with torch.no_grad():
+                _ = model(batch)
+            time_ed = time.time()
+            time_total += time_ed - time_st
         
-        time_st = time.time()
-        _ = model(batch)
-        time_ed = time.time()
-        time_list.append(time_ed - time_st)
+        time_list.append(time_total)
         
-        flops = FlopCountAnalysis(model, batch)
-        print("FLOPs: ", flops.total())
-        print(flop_count_table(flops))
-        print(parameter_count_table(model))
+        # flops = FlopCountAnalysis(model, batch)
+        # print("FLOPs: ", flops.total())
+        # print(flop_count_table(flops))
+        # print(parameter_count_table(model))
+
+    print(u'当前进程的内存使用：%.4f GB' % (psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024 / 1024) )
 
     print(np.mean(time_list))
         

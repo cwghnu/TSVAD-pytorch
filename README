@@ -1,6 +1,8 @@
 ## Data preparation
+Download Alimeeting Dataset from openslr website
 Please refer to utils/prepare_rttm.sh to generate rttm files.
-Please refer to utils/extracto_utt_xvector_sb.py to extract x-vectors and labels for each session.
+Please refer to utils/make_spkdiar.py to generate kaldi style configuration.
+Please refer to utils/extract_utt_xvector_sb.py to extract x-vectors and labels for training.
 
 ## Training
 python train.py
@@ -9,7 +11,13 @@ Please modify the json file accordingly.
 
 ## Inference
 
-# Need to improve
+# extract initial x-vector using clustering algorithm
 python cluster-init/cluster_xvector_vad_osd.py
 
-python inference.py
+# TS-VAD with initial x-vector from ground truth label
+python inference.py -c config/tsvad_config_xvec.json
+
+# TS-VAD with initial x-vector from clustering system
+python ./inference.py -c config/tsvad_config_xvec_1it.json
+python ./inference.py -c config/tsvad_config_xvec_2it.json
+python ./inference.py -c config/tsvad_config_xvec_3it.json

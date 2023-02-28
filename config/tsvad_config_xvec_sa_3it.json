@@ -1,0 +1,59 @@
+{
+    "train_config": {
+        "training_dir": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far",
+        "eval_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far",
+        "mfcc_config": "config/mfcc_extractor.json",
+        "output_directory": "checkpoints/tsvad_xvec_logmel_12",
+        "trainer_type": "basic",
+        "model_type": "TSVAD",
+        "max_iter": 500000,
+        "max_epoch": 50,
+        "optimize_param": {
+            "optim_type": "RAdam",
+            "learning_rate": 1e-4,
+            "max_grad_norm": 5.0,
+            "lr_scheduler":{
+                "step_size": 100000,
+                "gamma": 0.5,
+                "last_epoch": -1
+            }
+        },
+        "batch_size": 16,
+        "nframes": 800,
+        "chunk_step": 600,
+        "iters_per_checkpoint": 10000,
+        "iters_per_log": 1,
+        "seed": 1234,
+        "checkpoint_path": "",
+        "epochs_per_eval": 1,
+        "vec_type": "xvec",
+        "feat_type": "mfcc",
+        "num_workers": 16
+    },
+    "infer_config": {
+        "model_type": "TSVAD_SA",
+        "model_path": "/export/home2/cwguang/code/TSVAD-pytorch/checkpoints/tsvad_xvec_logmel_sa_1/avg",
+        "output_dir": "/export/home2/cwguang/code/TSVAD-pytorch/exp/hyp_probs",
+        "output_xvector_dir": "/export/home2/cwguang/code/TSVAD-pytorch/exp/Test/tsvad_3it/xvec",
+        "hyp_rttm_dir": "/export/home2/cwguang/code/TSVAD-pytorch/exp/hyp_rttm",
+        "ref_rttm_dir": "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/rttm_groundtruth",
+        "eval_dir": "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far",
+        "test_dir": "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far",
+        "mfcc_config": "config/mfcc_extractor.json",
+        "nframes": 800,
+        "chunk_step": 600,
+        "max_speakers": 4,
+        "vec_type": "xvec",
+        "feat_type": "mfcc",
+        "vec_dir": "/export/home2/cwguang/code/TSVAD-pytorch/exp/Test/tsvad_2it/xvec",
+        "feat_dir": ""
+    },
+    "model_config": {
+        "out_channels": [ 64, 64, 128, 128],
+        "rproj": 512,
+        "nproj": 512,
+        "cell": 1024,
+        "feat_dim": 24, 
+        "vec_dim": 512
+    }
+}

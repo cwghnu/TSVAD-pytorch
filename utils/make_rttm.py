@@ -7,12 +7,12 @@ sys.path.insert(0,os.getcwd())
 from utils.diarization import read_rttm, rttm2annotation
 from pyannote.core import Annotation, Segment, Timeline
 
-def make_rttm(hyp_probs_path, hyp_rttm_path):
+def make_rttm(hyp_probs_path, hyp_rttm_path, collar=0.5):
 
     # hyp_probs_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs"
     # hyp_rttm_path = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
 
-    threshold = 0.5
+    threshold = 0.4
     median = 51
     sampling_rate = 16000
     frame_shift = sampling_rate * 0.01
@@ -50,7 +50,7 @@ def make_rttm(hyp_probs_path, hyp_rttm_path):
 
         rttm_content = read_rttm(rttm_full_path)
         annot = rttm2annotation(rttm_content)
-        annot.support(collar=0.3)
+        annot.support(collar=collar)
 
         filtered_annot = Annotation()
         for segment, track, label in annot.itertracks(yield_label=True):

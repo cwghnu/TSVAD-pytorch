@@ -1,12 +1,12 @@
-# work_dir=/exhome1/weiguang/data/Alimeeting/Train_Ali_far
-# textgrid_dir=$work_dir/textgrid_dir
-# dia_rttm_dir=$work_dir/rttm_groundtruth
-# wav_dir=$work_dir/audio_dir
-
-work_dir=/exhome1/weiguang/data/AISHELL4/train_L
-textgrid_dir=$work_dir/TextGrid
+work_dir=/export/home2/cwguang/datasets/Train_Ali_far
+textgrid_dir=$work_dir/textgrid_dir
 dia_rttm_dir=$work_dir/rttm_groundtruth
-wav_dir=$work_dir/wav
+wav_dir=$work_dir/audio_dir
+
+# work_dir=/exhome1/weiguang/data/AISHELL4/train_L
+# textgrid_dir=$work_dir/TextGrid
+# dia_rttm_dir=$work_dir/rttm_groundtruth
+# wav_dir=$work_dir/wav
 
 stage=1
 stop_stage=8

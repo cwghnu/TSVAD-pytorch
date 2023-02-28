@@ -47,9 +47,13 @@ def extract_utt_xvector_by_rttm(config):
 
         signal_data, sr = sf.read(wav_path)
         rate = sr
-        if len(signal_data.shape) > 1:
-            signal_data = signal_data[:, 0]
-        signal_data = torch.from_numpy(signal_data[None, :]).float()
+        
+        # if len(signal_data.shape) > 1:
+        #     signal_data = signal_data[:, 0]
+        # signal_data = torch.from_numpy(signal_data[None, :]).float()
+
+        signal_data = torch.from_numpy(signal_data).float() 
+        signal_data = signal_data.permute(1,0).contiguous() # [num_channels, num_samples]
             
         filtered_segments = kaldi_obj.segments[rec_id]
         speakers = np.unique(
@@ -65,9 +69,9 @@ def extract_utt_xvector_by_rttm(config):
         ref_label_no_overlap = exclude_overlaping(ref_label)
 
         logmel_feat = extract_fbank(signal_data[0, :], logmel_config['sampling_rate'], num_mel_bins=logmel_config['num_mel_bins'], low_freq=logmel_config['low_freq'], high_freq=logmel_config['high_freq'])
-        print("logmel shape: {}".format(logmel_feat.shape))
-        output_file = os.path.join(config["logmel_output_directory"], rec_id)
-        np.save(output_file, logmel_feat)
+        # print("logmel shape: {}".format(logmel_feat.shape))
+        # output_file = os.path.join(config["logmel_output_directory"], rec_id)
+        # np.save(output_file, logmel_feat)
         label_array = np.zeros((len(logmel_feat), n_speaker), dtype=np.int32)
         start = 0
         end = logmel_feat.shape[0]
@@ -94,14 +98,15 @@ def extract_utt_xvector_by_rttm(config):
         mfcc_feat = Fbank(n_mels=24)(signal_data)
         mfcc_feat = mfcc_feat.to(device)
         norm = InputNormalization(norm_type="sentence", std_norm=False)
-        mfcc_feat = norm(mfcc_feat, torch.ones(1))  # [1, num_frames, num_feat]
+        mfcc_feat = norm(mfcc_feat, torch.ones(mfcc_feat.shape[0]))  # [num_channels, num_frames, num_feat]
 
         mfcc_feat = mfcc_feat[:, :logmel_feat.shape[0], :]
         output_file = os.path.join(config["mfcc_output_directory"], rec_id)
         print("mfcc shape: {}".format(mfcc_feat.shape))
         mfcc_feat = mfcc_feat.cpu().numpy()
         assert mfcc_feat.shape[1] == logmel_feat.shape[0]
-        np.save(output_file, mfcc_feat[0, ...])
+        np.save(output_file, mfcc_feat)
+        mfcc_feat = torch.from_numpy(mfcc_feat).to(device)
         
         xvector_emb = []
         label_ref = []
@@ -123,7 +128,9 @@ def extract_utt_xvector_by_rttm(config):
             if rel_start is not None or rel_end is not None:
                 with torch.no_grad():
                     try:
-                        xvector_emb.append(model(mfcc_feat[:, rel_start:rel_end, :])[0, ...])
+                        xvector_seg = model(mfcc_feat[:, rel_start:rel_end, :])
+                        xvector_seg = torch.mean(xvector_seg, dim=0)
+                        xvector_emb.append(xvector_seg)
                         label_ref.append(speaker_index)
                     except:
                         print(mfcc_feat.shape)
@@ -151,7 +158,7 @@ if __name__ == "__main__":
     import json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='/exhome1/weiguang/code/TSVAD-pytorch/config/xvector_extractor.json', help='JSON file for configuration')
+    parser.add_argument('-c', '--config', type=str, default='/export/home2/cwguang/code/TSVAD-pytorch/config/xvector_extractor.json', help='JSON file for configuration', required=False)
     args = parser.parse_args()
     
     with open(args.config) as f:

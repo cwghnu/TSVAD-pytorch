@@ -1,9 +1,9 @@
 {
     "train_config": {
-        "training_dir": "/exhome1/weiguang/data/Alimeeting/Train_Ali_far",
-        "eval_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far",
+        "training_dir": "/export/home2/cwguang/datasets/Train_Ali_far",
+        "eval_dir": "/export/home2/cwguang/datasets/Eval_Ali/Eval_Ali_far",
         "mfcc_config": "config/mfcc_extractor.json",
-        "output_directory": "checkpoints/tsvad_xvec_logmel_14",
+        "output_directory": "checkpoints/tsvad_xvec_logmel_2",
         "trainer_type": "basic",
         "model_type": "TSVAD",
         "max_iter": 500000,
@@ -18,7 +18,7 @@
                 "last_epoch": -1
             }
         },
-        "batch_size": 16,
+        "batch_size": 64,
         "nframes": 800,
         "chunk_step": 600,
         "iters_per_checkpoint": 10000,
@@ -28,17 +28,17 @@
         "epochs_per_eval": 1,
         "vec_type": "xvec",
         "feat_type": "mfcc",
-        "num_workers": 16
+        "num_workers": 24
     },
     "infer_config": {
         "model_type": "TSVAD",
-        "model_path": "/exhome1/weiguang/code/TSVAD-pytorch/checkpoints/tsvad_xvec_logmel_14/02-17_12-30_2",
-        "output_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_probs",
+        "model_path": "/export/home2/cwguang/code/TSVAD-pytorch/checkpoints/tsvad_xvec_logmel_2/avg",
+        "output_dir": "/export/home2/cwguang/code/TSVAD-pytorch/exp/hyp_probs",
         "output_xvector_dir": "",
-        "hyp_rttm_dir": "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm",
-        "ref_rttm_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far/rttm_groundtruth",
-        "eval_dir": "/exhome1/weiguang/data/Alimeeting/Eval_Ali/Eval_Ali_far",
-        "test_dir": "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far",
+        "hyp_rttm_dir": "/export/home2/cwguang/code/TSVAD-pytorch/exp/hyp_rttm",
+        "ref_rttm_dir": "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/rttm_groundtruth",
+        "eval_dir": "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far",
+        "test_dir": "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far",
         "mfcc_config": "config/mfcc_extractor.json",
         "nframes": 800,
         "chunk_step": 600,
@@ -50,7 +50,7 @@
     },
     "model_config": {
         "out_channels": [ 64, 64, 128, 128],
-        "rproj": 256,
+        "rproj": 786,
         "nproj": 256,
         "cell": 1024,
         "feat_dim": 24, 

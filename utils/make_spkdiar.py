@@ -34,7 +34,7 @@ def read_rttm(list_path, sep=' ', rttm_suffix=''):
     rttm = pd.read_csv(rttm_file, sep=sep, header=None,
                        names=['segment_type','file_id','chnl','tbeg','tdur',
                               'ortho','stype','name','conf','slat', 'noname'],
-                       dtype={'name': np.str, 'chnl': np.int, 'tbeg': np.float, 'tdur': np.float})
+                       dtype={'name': np.str_, 'chnl': np.int32, 'tbeg': np.float32, 'tdur': np.float32})
     #remove empty lines:
     index = (rttm['tdur']>= 0.025)
     rttm = rttm[index]
@@ -131,8 +131,8 @@ def make_spkdiar(list_path, wav_path, output_path, bin_wav):
     print('write vad segments')
     write_segm_fmt(rttm, output_path)
 
-    # print('write reco2dur')
-    # write_reco2dur(df_wav, output_path)
+    print('write reco2dur')
+    write_reco2dur(df_wav, output_path)
 
 if __name__ == "__main__":
 
@@ -141,9 +141,9 @@ if __name__ == "__main__":
         fromfile_prefix_chars='@',
         description='Make JSALT19 datasets for spk diarization')
 
-    parser.add_argument('--list-path', dest='list_path', default="/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far", required=False)
-    parser.add_argument('--wav-path', dest='wav_path', default="/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/audio_dir", required=False)
-    parser.add_argument('--output-path', dest='output_path', default="/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far",  required=False)
+    parser.add_argument('--list-path', dest='list_path', default="/export/home2/cwguang/datasets/Train_Ali_far", required=False)
+    parser.add_argument('--wav-path', dest='wav_path', default="/export/home2/cwguang/datasets/Train_Ali_far/audio_dir", required=False)
+    parser.add_argument('--output-path', dest='output_path', default="/export/home2/cwguang/datasets/Train_Ali_far",  required=False)
     parser.add_argument('--bin-wav', dest='bin_wav', default=False, action='store_true')
     args=parser.parse_args()
     

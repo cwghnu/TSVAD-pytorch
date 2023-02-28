@@ -28,7 +28,7 @@ def extract_xvec_with_tsvad(hyp_probs_dir, old_xvector_dir, xvector_dir, feat_di
     frame_shift = sampling_rate * 0.01
     subsampling = 1
 
-    device = torch.device("cpu")
+    device = torch.device("cuda:0")
     model_filepath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "checkpoints/speechbrain_xvector/embedding_model.ckpt")
     model = load_model(model_filepath, device)
 
@@ -41,6 +41,7 @@ def extract_xvec_with_tsvad(hyp_probs_dir, old_xvector_dir, xvector_dir, feat_di
         num_speaker = data.shape[1]
 
         data_high_probs = data / np.sum(data, axis=1, keepdims=True)
+        # data = np.where(data > threshold, 1, 0)
         data = np.where((data > threshold) & (data_high_probs > 0.8), 1, 0)
 
         if median > 1:
@@ -56,10 +57,12 @@ def extract_xvec_with_tsvad(hyp_probs_dir, old_xvector_dir, xvector_dir, feat_di
                 end_time = e * frame_shift * subsampling / sampling_rate
                 hyp_annot[Segment(start_time, end_time)] = spkid
 
-        hyp_annot.support(collar=0.3)
+        hyp_annot.support(collar=0.5)
         hyp_annot.extrude(hyp_annot.get_overlap())
 
         mfcc_feat = np.load(os.path.join(feat_dir, session+".npy"))
+        if len(mfcc_feat.shape) == 3:
+            mfcc_feat = mfcc_feat[0]
         mfcc_feat = torch.from_numpy(mfcc_feat)[None, ...]  # [1, num_frames, num_feat]
 
         speaker_emb = dict()
@@ -84,7 +87,7 @@ def extract_xvec_with_tsvad(hyp_probs_dir, old_xvector_dir, xvector_dir, feat_di
             if rel_start is not None or rel_end is not None:
                 with torch.no_grad():
                     try:
-                        xvector_tmp = model(mfcc_feat[:, rel_start:rel_end, :])[0, ...]
+                        xvector_tmp = model(mfcc_feat[:, rel_start:rel_end, :].to(device))[0, ...]
                         if label in list(speaker_emb.keys()):
                             speaker_emb[label].append(xvector_tmp.cpu().numpy())
                         else:
@@ -108,10 +111,10 @@ def extract_xvec_with_tsvad(hyp_probs_dir, old_xvector_dir, xvector_dir, feat_di
         
 
 if __name__ == "__main__":
-    hyp_probs_dir = "/exhome1/weiguang/code/TSVAD-pytorch/exp/Test/tsvad_1it/hyp_probs"
-    xvector_dir = "/exhome1/weiguang/code/TSVAD-pytorch/exp/Test/tsvad_1it/xvec"
-    old_xvector_dir = "/exhome1/weiguang/code/TSVAD-pytorch/exp/Test/cluster/xvec"
-    feat_dir = "/exhome1/weiguang/data/Alimeeting/Test_Ali/Test_Ali_far/mfcc_xvec"
+    hyp_probs_dir = "/export/home2/cwguang/code/TSVAD-pytorch/exp/hyp_probs"
+    xvector_dir = "/export/home2/cwguang/code/TSVAD-pytorch/exp/Test/tsvad_1it/xvec"
+    old_xvector_dir = "/export/home2/cwguang/code/TSVAD-pytorch/exp/Test/cluster/xvec"
+    feat_dir = "/export/home2/cwguang/datasets/Test_Ali/Test_Ali_far/mfcc_xvec"
 
     if not os.path.exists(xvector_dir):
         os.makedirs(xvector_dir)

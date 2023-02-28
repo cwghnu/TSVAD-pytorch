@@ -48,6 +48,8 @@ def average_model_from_dir(file_dir, num_avg=5):
     # model_files.sort()
     # model_files = model_files[-num_avg:]
 
+    print("To be averaged: {}".format(model_files))
+
     selected_files = [os.path.join(file_dir, file_name) for file_name in model_files]
     output_file = os.path.join(file_dir, "avg")
     average_model(selected_files, output_file)
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--dir', type=str, default=os.path.join(os.path.dirname(os.path.dirname(__file__)), "checkpoints/tsvad_xvec_logmel_12"),
+    parser.add_argument('-d', '--dir', type=str, default=os.path.join(os.path.dirname(os.path.dirname(__file__)), "checkpoints/tsvad_xvec_logmel_ts_6"),
                         help='model file path')
     args = parser.parse_args()
 

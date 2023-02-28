@@ -81,56 +81,64 @@ def inference(infer_config, model_config):
 
     utt_ids = list(evalset.kaldi_obj.wavs.keys())
     
-    # model.eval()
-    # for i, utt_id in enumerate(tqdm(utt_ids)):
-    #     feat_utt = np.load(os.path.join(evalset.feat_dir, utt_id + '.npy'))    # [num_frames, 72]
-    #     vec_utt = np.load(os.path.join(evalset.vec_dir, utt_id + '.npy'))    # [num_speakers, 400]
-    #     label_utt = np.load(os.path.join(evalset.label_dir, utt_id + '.npy'))  # [num_frames, num_speakers]
+    model.eval()
+    for i, utt_id in enumerate(tqdm(utt_ids)):
+        feat_utt = np.load(os.path.join(evalset.feat_dir, utt_id + '.npy'))    # [num_frames, 72]
+        vec_utt = np.load(os.path.join(evalset.vec_dir, utt_id + '.npy'))    # [num_speakers, 400]
+        label_utt = np.load(os.path.join(evalset.label_dir, utt_id + '.npy'))  # [num_frames, num_speakers]
 
-    #     num_frames, num_speakers = label_utt.shape
-    #     vec_dim = vec_utt.shape[-1]
+        if len(feat_utt.shape) > 2:
+            feat_utt = feat_utt[0]   # [num_frames, num_feat]
 
-    #     if num_speakers < max_speakers:
-    #         # label_utt = np.concatenate((label_utt, np.zeros((num_frames, max_speakers - num_speakers))), axis=-1)
-    #         # vec_utt = np.concatenate((vec_utt, np.zeros((max_speakers - num_speakers, vec_dim))), axis=0)
+        num_frames, num_speakers = label_utt.shape
+        vec_dim = vec_utt.shape[-1]
 
-    #         label_utt = np.concatenate((label_utt, label_utt[:, :max_speakers - num_speakers]), axis=-1)
-    #         vec_utt = np.concatenate((vec_utt, vec_utt[:max_speakers - num_speakers]), axis=0)
+        if num_speakers < max_speakers:
+            # label_utt = np.concatenate((label_utt, np.zeros((num_frames, max_speakers - num_speakers))), axis=-1)
+            # vec_utt = np.concatenate((vec_utt, np.zeros((max_speakers - num_speakers, vec_dim))), axis=0)
 
-    #     out_chunks = []
+            label_utt = np.concatenate((label_utt, label_utt[:, :max_speakers - num_speakers]), axis=-1)
+            vec_utt = np.concatenate((vec_utt, vec_utt[:max_speakers - num_speakers]), axis=0)
 
-    #     idx_start = 0
-    #     num_chunks = int(feat_utt.shape[0] // nframes)
-    #     for idx_chunk in range(num_chunks):
-    #         if idx_chunk == num_chunks - 1:
-    #             feat_utt_chunk = feat_utt[idx_start:]      # [num_frames, 72]
-    #             label_utt_chunk = label_utt[idx_start:]    # [num_frames, num_speakers]
-    #         else:
-    #             feat_utt_chunk = feat_utt[idx_start:(idx_start+nframes)]      # [num_frames, 72]
-    #             label_utt_chunk = label_utt[idx_start:(idx_start+nframes)]    # [num_frames, num_speakers]
+        out_chunks = []
 
-    #         input_chunk = {
-    #             "feat": torch.from_numpy(feat_utt_chunk).float().unsqueeze(0).to(device),
-    #             "label": torch.from_numpy(label_utt_chunk).float().unsqueeze(0).to(device),
-    #             "spk_vector": torch.from_numpy(vec_utt).float().unsqueeze(0).to(device),
-    #         }
+        idx_start = 0
+        num_chunks = int(feat_utt.shape[0] // nframes)
+        for idx_chunk in range(num_chunks):
+            if idx_chunk == num_chunks - 1:
+                feat_utt_chunk = feat_utt[idx_start:]      # [num_frames, 72]
+                label_utt_chunk = label_utt[idx_start:]    # [num_frames, num_speakers]
+            else:
+                feat_utt_chunk = feat_utt[idx_start:(idx_start+nframes)]      # [num_frames, 72]
+                label_utt_chunk = label_utt[idx_start:(idx_start+nframes)]    # [num_frames, num_speakers]
 
-    #         with torch.no_grad():
-    #             preds = model(input_chunk).squeeze(0).cpu().numpy()
+            input_chunk = {
+                "feat": torch.from_numpy(feat_utt_chunk).float().unsqueeze(0).to(device),
+                "label": torch.from_numpy(label_utt_chunk).float().unsqueeze(0).to(device),
+                "spk_vector": torch.from_numpy(vec_utt).float().unsqueeze(0).to(device),
+            }
 
-    #         out_chunks.append(preds)
+            with torch.no_grad():
+                results = model(input_chunk)
+                if isinstance(results, tuple):
+                    preds = results[0]
+                else:
+                    preds = results
+                preds = torch.nn.Sigmoid()(preds).squeeze(0).cpu().numpy()
 
-    #         idx_start += nframes
+            out_chunks.append(preds)
 
-    #     outdata = np.vstack(out_chunks)
+            idx_start += nframes
 
-    #     outdata = outdata[:, :num_speakers]
+        outdata = np.vstack(out_chunks)
+
+        outdata = outdata[:, :num_speakers]
         
-    #     output_file = os.path.join(output_dir, utt_id)
-    #     np.save(output_file, outdata)
+        output_file = os.path.join(output_dir, utt_id)
+        np.save(output_file, outdata)
 
-    make_rttm(output_dir, hyp_rttm_dir)
-    cal_der(hyp_rttm_dir, ref_rttm_dir)
+    make_rttm(output_dir, hyp_rttm_dir, collar=0.5)
+    cal_der(hyp_rttm_dir, ref_rttm_dir, collar=0.25, fuse_gold_VAD=False)
 
     if infer_config['output_xvector_dir'] != "":
         if not os.path.exists(infer_config['output_xvector_dir']):
@@ -142,7 +150,7 @@ if __name__ == "__main__":
     import json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='config/tsvad_config_xvec.json',
+    parser.add_argument('-c', '--config', type=str, default='/export/home2/cwguang/code/TSVAD-pytorch/config/tsvad_config_xvec.json',
                         help='JSON file for configuration')
     parser.add_argument('-g', '--gpu', type=str, default='1',
                         help='Using gpu #')

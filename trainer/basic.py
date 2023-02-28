@@ -3,6 +3,12 @@ import torch
 # from .radam import RAdam 
 from importlib import import_module
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from utils.loss import spk_emb_loss
+
 
 class Trainer(object):
     def __init__(self, train_config, model_config):
@@ -67,20 +73,43 @@ class Trainer(object):
             if key != "index_spks":
                 input[key] = input[key].to(self.device)
 
-        preds = torch.nn.parallel.data_parallel(
+        preds, spk_emb = torch.nn.parallel.data_parallel(
             self.model,
             (input),
             self.gpus,
             self.gpus[0],
         )
+        # if isinstance(results, set):
+        #     preds, spk_emb = results[0], results[1]
+        # else:
+        #     preds = results
+        #     spk_emb = None
         bs, tframe = input["label"].shape[0:2]
+
         loss_batches = []
+        loss_batches_spks = []
         for idx, idx_batch in enumerate(input["index_spks"]):
             # print(idx, idx_batch)
-            loss_batches.append(torch.nn.BCELoss(reduction='sum')(preds[idx, :, idx_batch], input["label"][idx, :, idx_batch]) / tframe) 
-        loss = torch.stack(loss_batches).mean()
+            # loss_batches.append(torch.nn.BCELoss(reduction='sum')(preds[idx, :, idx_batch], input["label"][idx, :, idx_batch]) / tframe) 
+            loss_diar = torch.nn.BCEWithLogitsLoss(reduction='sum')(preds[idx, :, idx_batch], input["label"][idx, :, idx_batch]) / tframe
+            if spk_emb is not None:
+                loss_spk = spk_emb_loss(spk_emb[idx, idx_batch, :])
+                loss_batches.append(loss_diar)
+                loss_batches_spks.append(loss_spk)
+            else:
+                loss_batches.append(loss_diar)
+
+        loss_batches = torch.stack(loss_batches).mean()
+        if spk_emb is not None:
+            loss_batches_spks = torch.stack(loss_batches_spks).mean()
+            loss = loss_batches
+            # loss = loss_batches + loss_batches_spks
+            loss_detail = {"diarization loss": loss_batches.item(), "spks loss": loss_batches_spks.item()}
+        else:
+            loss = loss_batches
+            loss_detail = {"diarization loss": loss_batches.item()}
+
         # loss = torch.nn.BCELoss(reduction='sum')(preds, input["label"]) / tframe / bs
-        loss_detail = {"diarization loss": loss.item()}
         
         # loss, loss_detail = self.model(input)
 

@@ -101,6 +101,7 @@ def test_model():
 
     checkpoint = torch.load(pretrain_model_path, map_location="cpu")
     model.load_state_dict(checkpoint)
+    pass
 
 if __name__ == "__main__":
     test_model()

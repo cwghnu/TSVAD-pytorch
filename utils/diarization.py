@@ -1163,10 +1163,36 @@ def rttm2annotation(rttm):
         annot[Segment(st, st+dur)] = label
     return annot
 
+def alignRef2Hyp(ref_annotation, hyp_annotation, nearby_time=10):
+    ref_vad_timeline = ref_annotation.get_timeline()
+    hyp_vad_timeline = hyp_annotation.get_timeline()
+
+    hyp_dur = hyp_vad_timeline.extent().duration
+
+    for segment_ref, segment_hyp in ref_vad_timeline.co_iter(hyp_vad_timeline):
+        diff_seg = segment_ref ^ segment_hyp     # should asign the longest talking nearby speaker
+        diff_seg_label = hyp_annotation.get_labels(diff_seg)
+
+        if len(diff_seg_label) == 0:
+            label = hyp_annotation.argmax(Segment(max(diff_seg.start - nearby_time, 0), min(diff_seg.end + nearby_time, hyp_dur)))
+            while label is None:
+                nearby_time = nearby_time * 2
+                label = hyp_annotation.argmax(Segment(max(diff_seg.start - nearby_time, 0), min(diff_seg.end + nearby_time, hyp_dur)))
+            hyp_annotation[diff_seg] = label
+        else:
+            intersec_annot = hyp_annotation.copy().crop(diff_seg, mode='loose')
+            hyp_annotation[diff_seg] = intersec_annot.argmax()
+
+    return hyp_annotation
+
 # Diarization Error Rate
-def DER(ref_rttm, hyp_rttm, rec_length=None, skip_overlap=False, collar=0.25):
+def DER(ref_rttm, hyp_rttm, rec_length=None, skip_overlap=False, collar=0.25, fuse_gold_VAD=False):
     ref_annotation = rttm2annotation(ref_rttm)
     hyp_annotation = rttm2annotation(hyp_rttm)
+
+    if fuse_gold_VAD:
+        hyp_annotation = hyp_annotation.crop(ref_annotation.get_timeline())      # delete segments which are silence in reference
+        hyp_annotation = alignRef2Hyp(ref_annotation, hyp_annotation)
 
     diarizationErrorRate = DiarizationErrorRate(collar=collar, skip_overlap=skip_overlap)
 

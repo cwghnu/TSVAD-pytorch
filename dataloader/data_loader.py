@@ -26,7 +26,7 @@ class Dataset(torch.utils.data.Dataset):
     This is the main class that calculates the spectrogram and returns the
     spectrogram, audio pair.
     """
-    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, chunk_step=1000, max_speakers=4, use_mix_up=True, alpha=0.5, permute_spk=True, vec_type="ivec", feat_type="mfcc", vec_dir="", feat_dir=""):
+    def __init__(self, path_dataset, mfcc_config, chunk_size=2000, chunk_step=1000, max_speakers=4, use_mix_up=True, alpha=0.5, permute_spk=True, vec_type="ivec", feat_type="mfcc", vec_dir="", feat_dir="", random_channel=True):
 
         self.vec_type = vec_type
         self.feat_type = feat_type
@@ -34,6 +34,7 @@ class Dataset(torch.utils.data.Dataset):
         self.feat_dir = feat_dir
         self.use_mix_up = use_mix_up
         self.alpha = alpha
+        self.random_channel = random_channel
 
         if self.feat_type == "mfcc":
             self.feat_type = self.feat_type + "_" + self.vec_type
@@ -96,10 +97,16 @@ class Dataset(torch.utils.data.Dataset):
         # idx_utt = index % len(self.utt_ids)
         # utt_id = self.utt_ids[idx_utt]
         
-        feat_utt = np.load(os.path.join(self.feat_dir, utt_id + '.npy'))    # [num_frames, 72]
+        feat_utt = np.load(os.path.join(self.feat_dir, utt_id + '.npy'))    # [num_channels, num_frames, 72]
         vec_utt = np.load(os.path.join(self.vec_dir, utt_id + '.npy'))    # [num_speakers, 400]
         label_utt = np.load(os.path.join(self.label_dir, utt_id + '.npy'))  # [num_frames, num_speakers]
         
+        if len(feat_utt.shape) > 2:
+            if self.random_channel:
+                feat_utt = feat_utt[random.randint(0, feat_utt.shape[0]-1)]   # [num_frames, num_feat]
+            else:
+                feat_utt = feat_utt[0]   # [num_frames, num_feat]
+
         assert len(feat_utt) == len(label_utt)
         assert len(vec_utt) == label_utt.shape[1]
 
@@ -191,8 +198,8 @@ def test_dataset():
     chunk_step = infer_config.get('chunk_step', 20)
 
     evalset = Dataset(
-        infer_config['eval_dir'],
-        # train_config['training_dir'],
+        # infer_config['eval_dir'],
+        train_config['training_dir'],
         mfcc_config, 
         chunk_size=nframes, 
         chunk_step=chunk_step,

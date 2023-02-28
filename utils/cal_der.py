@@ -16,7 +16,7 @@ def load_rttm(file_name):
             rttm_content.append(line.rstrip())
     return rttm_content
 
-def cal_der(pre_rttm_dir, ref_rttm_dir):
+def cal_der(pre_rttm_dir, ref_rttm_dir, fuse_gold_VAD=False, collar=0.0):
 
     # ref_rttm_dir = "/exhome1/weiguang/data/M2MET/Eval_Ali_far/rttm_dir"
     # pre_rttm_dir = "/exhome1/weiguang/code/TSVAD-pytorch/exp/hyp_rttm"
@@ -35,7 +35,7 @@ def cal_der(pre_rttm_dir, ref_rttm_dir):
 
             ref_num_spkrs = get_oracle_num_spkrs_from_uttrttm(ref_rttm_content)
 
-            der_result = DER(ref_rttm_content, hyp_rttm_content, collar=0.00)
+            der_result = DER(ref_rttm_content, hyp_rttm_content, collar=collar, fuse_gold_VAD=fuse_gold_VAD)
 
             list_result_dict.append(der_result)
             num_spkrs_list.append(ref_num_spkrs)
